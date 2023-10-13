@@ -45,11 +45,13 @@ def add_cloud(file_name, file_name_save, k):
     return cloud_map, res.astype(np.uint8),fourground_map
 
 def main():
-    data = "NWPU-RESISC45"
-    dataPath_test = "data/"+data+"/test_dataset-ori"
-    dataPath_test_cloudy = "data/"+data+"/test_dataset"
-    dataPath_train = "data/"+data+"/train_dataset-ori"
-    dataPath_train_cloudy = "data/"+data+"/train_dataset"
+    dataset = "NWPU-RESISC45"
+
+    dataPath_test = "data/"+dataset+"/test_dataset-ori"
+    dataPath_test_cloudy = "data/"+dataset+"/test_dataset"
+    dataPath_train = "data/"+dataset+"/train_dataset-ori"
+    dataPath_train_cloudy = "data/"+dataset+"/train_dataset"
+    
     label = os.listdir(dataPath_test)
 
     for l in label:
