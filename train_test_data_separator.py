@@ -21,17 +21,17 @@ for l in label:
 		os.mkdir(path_test)
 
 
-# for l in label:
-# 	# Generate which images should be in the test set 
-# 	test_num = int(test_percentage/100 * numData)
-# 	idx_test = random.sample(range(1, numData), test_num)
+for l in label:
+	# Generate which images should be in the test set 
+	test_num = int(test_percentage/100 * numData)
+	idx_test = random.sample(range(1, numData), test_num)
 
 
-# 	# Separate image into test and train folders
-# 	for i in range(1,701):
-# 		if(i in idx_test):
-# 			shutil.copyfile(os.path.join("data/NWPU-RESISC45-all", l, l+"_"+str(i).zfill(3)+".jpg"),
-#                 os.path.join("data/NWPU-RESISC45/test_dataset", l, l+"_"+str(i).zfill(3)+".jpg"))
-# 		else:
-# 			shutil.copyfile(os.path.join("data/NWPU-RESISC45-all", l, l+"_"+str(i).zfill(3)+".jpg"),
-#                 os.path.join("data/NWPU-RESISC45/train_dataset", l, l+"_"+str(i).zfill(3)+".jpg"))
+	# Separate image into test and train folders
+	for i in range(1,701):
+		if(i in idx_test):
+			shutil.copyfile(os.path.join("data/NWPU-RESISC45-all", l, l+"_"+str(i).zfill(3)+".jpg"),
+                os.path.join("data/NWPU-RESISC45/test_dataset", l, l+"_"+str(i).zfill(3)+".jpg"))
+		else:
+			shutil.copyfile(os.path.join("data/NWPU-RESISC45-all", l, l+"_"+str(i).zfill(3)+".jpg"),
+                os.path.join("data/NWPU-RESISC45/train_dataset", l, l+"_"+str(i).zfill(3)+".jpg"))
