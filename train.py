@@ -105,7 +105,7 @@ def main():
     
     PARAMS = {'DEVICE': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
                 'bs': args.bs,
-                'epochs':1,
+                'epochs':20,
                 'lr': 0.0006,
                 'momentum': 0.5,
                 'log_interval':10,
