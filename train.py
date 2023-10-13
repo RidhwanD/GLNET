@@ -25,7 +25,6 @@ def train(PARAMS, model, criterion, device, train_loader, optimizer, epoch):
     t0 = time.time()
     model.train()
     correct = 0
-
     for batch_idx, (img, cluster,  target) in enumerate(tqdm(train_loader)):
         img,  target = img.to(device),  target.to(device)
         cluster =  [item.to(device) for item in cluster ]
@@ -59,7 +58,7 @@ def test(PARAMS, model,criterion, device, test_loader,optimizer,epoch,best_acc):
 
     example_images = []
     with torch.no_grad():
-        for batch_idx, (img, cluster,  target) in enumerate(tqdm(test_loader)):
+        for batch_idx, (img, cluster, target) in enumerate(tqdm(test_loader)):
             img, target = img.to(device), target.to(device)
             cluster =  [item.to(device) for item in cluster ]
             output = model(img,cluster)
@@ -94,7 +93,7 @@ def boolean_string(s):
     return s == 'True'
 
 def main():
-    parser = argparse.ArgumentParser(description='manual to this script')
+    parser = argparse.ArgumentParser(description='manual to this script')  
     parser.add_argument('--model', type=str, default = 'vgg16')
     parser.add_argument('--partion', type=float, default=0.5)
     parser.add_argument('--bs', type=int, default=8)
@@ -104,12 +103,9 @@ def main():
     args = parser.parse_args()
 
     
-
-
-    
     PARAMS = {'DEVICE': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
                 'bs': args.bs,
-                'epochs':50,
+                'epochs':1,
                 'lr': 0.0006,
                 'momentum': 0.5,
                 'log_interval':10,
@@ -122,7 +118,7 @@ def main():
     tags =   PARAMS['model_name']   +'_'+ "fixed_" +str(PARAMS['fixed']) +'_'+ 'aug_' + str(PARAMS['Augmentation'])
 
 
- # Training settings
+    # Training settings
 
     if PARAMS['Augmentation']:
         train_transform = transforms.Compose(
@@ -141,17 +137,17 @@ def main():
                     transforms.ToTensor(),
                     transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
     test_transform = transforms.Compose(
-                    [ 
-                        transforms.ToPILImage(),
-                        transforms.Resize((224,224)),
-                        transforms.ToTensor(),
-                        transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
+            [ 
+                transforms.ToPILImage(),
+                transforms.Resize((224,224)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
 
 
     train_dataset = RS_Dataset(
-        root='thin_cloud/train_img',transform = train_transform)
+        root='data/rsscn7/train_dataset',transform = train_transform)
     test_dataset = RS_Dataset(
-        root='thin_cloud/test_img',transform = test_transform)
+        root='data/rsscn7/test_dataset',transform = test_transform)
 
     print(PARAMS)
     train_loader = DataLoader(train_dataset,  batch_size=PARAMS['bs'], shuffle=True, num_workers=4, pin_memory = True )
@@ -164,7 +160,7 @@ def main():
     # model = SiameseNetwork(base_model = PARAMS['model_name'], num_classes = num_classes).to(PARAMS['DEVICE'])
     model = SiameseNetwork(base_model = PARAMS['model_name'], num_classes = num_classes, fixed = PARAMS['fixed']).to(PARAMS['DEVICE'] )
 
-    model = model.to(PARAMS['DEVICE'])   
+    model = model.to(PARAMS['DEVICE'])
 
     optimizer = optim.SGD(model.parameters(), lr=PARAMS['lr'], momentum=PARAMS['momentum'])
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = 7, gamma = 0.9)
@@ -176,7 +172,6 @@ def main():
         current_acc = test(PARAMS, model,criterion, PARAMS['DEVICE'], test_loader,optimizer,epoch,current_acc)
         scheduler.step()
     torch.save(model, 'new_saved_models/{}_{}_{}_proposed_nodiff.pth'.format(date.today(),PARAMS['model_name'],round(current_acc,2)))
-
 
 
 if __name__ == '__main__':

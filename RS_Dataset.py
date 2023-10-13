@@ -15,13 +15,10 @@ class RS_Dataset(ImageFolder):
         self.partion = partion
         self.size = size
         self.width,self.length = int(self.size*self.partion),int(self.size*self.partion)
-
-
-
+        
         
     def __getitem__(self, index):
-
-        img = np.array(Image.open(self.imgs[index][0]))
+        img = np.array(Image.open(self.imgs[index][0]).convert('RGB'))
         upper_left   =   cv2.resize(img[:self.width,:self.length],(self.size,self.size))
         upper_right  =   cv2.resize(img[:self.width,-self.length:],(self.size,self.size))
         bottom_right =   cv2.resize(img[-self.width:,-self.length:],(self.size,self.size))

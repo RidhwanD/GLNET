@@ -76,7 +76,7 @@ def main():
 
     PARAMS = {'DEVICE': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
                 'bs': 8,
-                'epochs':50,
+                'epochs':1,
                 'lr': 0.0006,
                 'momentum': 0.5,
                 'log_interval':10,
@@ -90,7 +90,7 @@ def main():
     train_transform = transforms.Compose(
                     [ 
                         transforms.RandomHorizontalFlip(),
-                         transforms.ColorJitter(0.4, 0.4, 0.4),
+                        transforms.ColorJitter(0.4, 0.4, 0.4),
                         transforms.Resize((256,256)),
                         transforms.ToTensor(),
                         transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
@@ -102,16 +102,15 @@ def main():
 
 
     if args.dataset == 'rsscn7':
-  
-        # train_dataset = datasets.ImageFolder(root='data/thick_removal',transform = train_transform)
-        # test_dataset = datasets.ImageFolder(root='data/thick_removal',transform = test_transform)
-
         train_dataset = datasets.ImageFolder(root='data/rsscn7/train_dataset/',transform = train_transform)
         test_dataset = datasets.ImageFolder(root='data/rsscn7/test_dataset/',transform = test_transform)
     elif args.dataset == 'ucm':
-    
         train_dataset = datasets.ImageFolder(root='data/ucm/train_dataset/',transform = train_transform)
         test_dataset = datasets.ImageFolder(root='data/ucm/test_dataset/',transform = test_transform)
+    elif args.dataset == 'NWPU-RESISC45':
+        train_dataset = datasets.ImageFolder(root='data/NWPU-RESISC45/train_dataset/',transform = train_transform)
+        test_dataset = datasets.ImageFolder(root='data/NWPU-RESISC45/test_dataset/',transform = test_transform)
+
     print(PARAMS)
     train_loader = DataLoader(train_dataset,  batch_size=PARAMS['bs'], shuffle=True, num_workers=4, pin_memory = True )
     test_loader =  DataLoader(test_dataset, batch_size=PARAMS['bs'], shuffle=True,  num_workers=4, pin_memory = True  )
@@ -120,14 +119,14 @@ def main():
 
     num_classes = len(train_dataset.classes)
     if PARAMS['model_name'] == 'vgg16':
-        model = models.vgg16(pretrained=True)
-        model.classifier[-1] =  nn.Linear(in_features=4096, out_features=num_classes, bias=True)
+        model = models.vgg16(weights='VGG16_Weights.DEFAULT')
+        model.fc =  nn.Linear(in_features=4096, out_features=num_classes, bias=True)
     elif PARAMS['model_name'] == 'resnet50':
-        model = models.resnet50(pretrained=True)
+        model = models.resnet50(weights='ResNet50_Weights.DEFAULT')
         model.fc =  nn.Linear(in_features=2048, out_features=num_classes, bias=True)
     elif PARAMS['model_name'] == 'alexnet':
-        model = models.alexnet(pretrained=True)
-        model.classifier[-1] =  nn.Linear(in_features=4096, out_features=num_classes, bias=True)    
+        model = models.alexnet(weights='AlexNet_Weights.DEFAULT')
+        model.fc =  nn.Linear(in_features=4096, out_features=num_classes, bias=True)    
 
     
    

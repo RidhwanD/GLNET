@@ -5,8 +5,6 @@ import torchvision.models as models
 from torchvision.models import vgg16,alexnet,resnet50
 import numpy as np 
 
-
-
 torch.nn.Module.dump_patches = True
 class SiameseNetwork(nn.Module):
     def __init__(self,base_model ='vgg16',num_classes = 5 , fixed = False,out_features_dim = 128):
@@ -18,17 +16,16 @@ class SiameseNetwork(nn.Module):
 
         self.lower_model = self.make_back_bone(self.base_model)
         self.upper_backbone = self.make_back_bone(self.base_model)
-        # for param in self.parameters():
-        #     param.requires_grad = False
         self.fc1 = nn.Linear(in_features=6*8*4, out_features=self.num_classes, bias=True)
         self.prelu = nn.PReLU()
         self.avgpool = nn.AvgPool2d(2)
 
     def make_back_bone(self,base_model):
         if base_model == 'vgg16':
-            # model = torch.load('new_saved_models/2020-07-07_vgg16_93.79_baseline.pth')
-            # model = torch.load('saved_models/2020-07-07_vgg16_cloud_baseline.pth')
-            model = vgg16()
+            model = models.vgg16(weights='VGG16_Weights.DEFAULT')
+            model.fc =  nn.Linear(in_features=4096, out_features=self.num_classes, bias=True)
+            weights = torch.load('saved_models/rsscn7_2023-10-13_vgg16_74.36_baseline.pth')             # Use saved parameters
+            model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
                     param.requires_grad = False
@@ -36,8 +33,10 @@ class SiameseNetwork(nn.Module):
             return model
 
         if base_model == 'alexnet':
-            # model = torch.load('new_saved_models/2020-07-07_alexnet_91.57_baseline.pth')
-            model = torch.load('new_saved_models/2020-08-20_alexnet_88.85_cloud_baseline.pth')
+            model = models.alexnet(weights='AlexNet_Weights.DEFAULT')
+            model.fc =  nn.Linear(in_features=4096, out_features=self.num_classes, bias=True)
+            weights = torch.load('saved_models/rsscn7_2023-10-13_alexnet_59.43_baseline.pth')           # Use saved parameters
+            model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
                     param.requires_grad = False
@@ -45,8 +44,10 @@ class SiameseNetwork(nn.Module):
             return model
         
         if base_model == 'resnet50':
-           # model = torch.load('new_saved_models/2020-07-07_resnet50_94.21_baseline.pth')
-            model = torch.load('new_saved_models/2020-08-21_resnet50_91.57_cloud_baseline.pth')
+            model = models.resnet50(weights='ResNet50_Weights.DEFAULT')
+            model.fc =  nn.Linear(in_features=2048, out_features=self.num_classes, bias=True)
+            weights = torch.load('saved_models/rsscn7_2023-10-13_resnet50_49.86_baseline.pth')          # Use saved parameters
+            model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
                     param.requires_grad = False
@@ -74,11 +75,5 @@ class SiameseNetwork(nn.Module):
         x = x.view(x.size(0), -1) 
         # print(x.shape)
         x = self.fc1(x)
-    
-
 
         return x
-
-
-if __name__ == '__main__':
-    model = SiameseNetwork(7)

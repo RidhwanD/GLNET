@@ -1,3 +1,6 @@
+import os
+import random
+import shutil
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib
@@ -24,28 +27,38 @@ def generate_cloud(im_size_h, im_size_w,k = 2,):
     return turbulence_pattern
 
 
-def add_cloud(file_name,k):
-    #file_name = '20_00019.png'
-#     img = mpimg.imread(file_name) * 255
+def add_cloud(file_name, file_name_save, k):
     img = cv2.imread(file_name)
     im_size_h, im_size_w = np.shape(img)[:2]
         
     # Generate cloud map
     cloud_map = generate_cloud(im_size_h, im_size_w,k)
     fourground_map = (255 - cloud_map) / 255
-    #plt.imsave('cloud.png',cloud_map)
-    # add cloud to original image
     res = np.zeros((np.shape(img)))
-    print( img[:,:,0])
-    res[:,:,0] = img[:,:,0] * fourground_map + cloud_map
-    res[:,:,1] = img[:,:,1] * fourground_map + cloud_map
-    res[:,:,2] = img[:,:,2] * fourground_map + cloud_map
+    res[:,:,0] = (img[:,:,0] * fourground_map + cloud_map) / 256
+    res[:,:,1] = (img[:,:,1] * fourground_map + cloud_map) / 256
+    res[:,:,2] = (img[:,:,2] * fourground_map + cloud_map) / 256
     
-    #print(np.max(res))
-    #print(np.min(res))
-    #plt.imsave(file_name.replace('.tif', '_cloud.png'), res)
+    plt.imsave(file_name_save.replace('.jpg', '_cloud.png'), res)
+    print(file_name_save.replace('.jpg', '_cloud.png'))
     
     return cloud_map, res.astype(np.uint8),fourground_map
 
+def main():
+    data = "NWPU-RESISC45"
+    dataPath_test = "data/"+data+"/test_dataset-ori"
+    dataPath_test_cloudy = "data/"+data+"/test_dataset"
+    dataPath_train = "data/"+data+"/train_dataset-ori"
+    dataPath_train_cloudy = "data/"+data+"/train_dataset"
+    label = os.listdir(dataPath_test)
 
-generate_cloud(256, 256,2)
+    for l in label:
+        imgs = os.listdir(dataPath_test+"/"+l)
+        for img in imgs:
+            add_cloud(dataPath_test+"/"+l+"/"+img,dataPath_test_cloudy+"/"+l+"/"+img,2)
+        imgs = os.listdir(dataPath_train+"/"+l)
+        for img in imgs:
+            add_cloud(dataPath_train+"/"+l+"/"+img,dataPath_train_cloudy+"/"+l+"/"+img,2)
+
+if __name__ == '__main__':
+    main()
