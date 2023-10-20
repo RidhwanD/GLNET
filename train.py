@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-from torch.utils.data import TensorDataset, DataLoader, Dataset,SubsetRandomSampler
+from torch.utils.data import TensorDataset, DataLoader, Dataset, SubsetRandomSampler
 from torchvision import models
 import time
 from RS_Dataset import RS_Dataset
@@ -16,12 +16,13 @@ from datetime import date
 import argparse
 from torchvision.models import resnet50,alexnet,vgg16
 from model import SiameseNetwork
+from center_loss import CenterLoss
 
 #offline
 
 
 
-def train(PARAMS, model, criterion, device, train_loader, optimizer, epoch):
+def train(PARAMS, model, criterion, center_loss, device, train_loader, optimizer, epoch, alpha):
     t0 = time.time()
     model.train()
     correct = 0
@@ -32,9 +33,18 @@ def train(PARAMS, model, criterion, device, train_loader, optimizer, epoch):
         output = model(img,cluster)
         # output = model(img)
 
-        loss = criterion(output, target )
+        loss = center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)
+        optimizer.zero_grad()
         loss.backward()
+        for param in center_loss.parameters():
+            # lr_cent is learning rate for center loss, e.g. lr_cent = 0.5
+            param.grad.data *= (PARAMS['lr'] / (alpha * PARAMS['lr']))
         optimizer.step()
+
+        # loss = criterion(output, target)
+        # loss.backward()
+        # optimizer.step()
+        
         pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
     
@@ -51,7 +61,7 @@ def train(PARAMS, model, criterion, device, train_loader, optimizer, epoch):
 
 
 
-def test(PARAMS, model,criterion, device, test_loader,optimizer,epoch,best_acc):
+def test(PARAMS, model,criterion, center_loss, device, test_loader,optimizer,epoch,best_acc, alpha):
     model.eval()
     test_loss = 0
     correct = 0
@@ -64,7 +74,7 @@ def test(PARAMS, model,criterion, device, test_loader,optimizer,epoch,best_acc):
             output = model(img,cluster)
             # output = model(img)
 
-            test_loss += criterion(output, target).item() # sum up batch loss
+            test_loss += (center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)).item()
             pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
             # Save the first input tensor in each test batch as an example image
@@ -114,6 +124,7 @@ def main():
                 'model_name': str(args.model) ,
                 'fixed':args.fixed,
                 'Augmentation': args.Augmentation,
+                'alpha':0.5,
                 }
     tags =   PARAMS['model_name']   +'_'+ "fixed_" +str(PARAMS['fixed']) +'_'+ 'aug_' + str(PARAMS['Augmentation'])
 
@@ -153,23 +164,24 @@ def main():
     train_loader = DataLoader(train_dataset,  batch_size=PARAMS['bs'], shuffle=True, num_workers=4, pin_memory = True )
     test_loader =  DataLoader(test_dataset, batch_size=PARAMS['bs'], shuffle=True,  num_workers=4, pin_memory = True  )
 
-
-
-
     num_classes = len(train_dataset.classes)
     # model = SiameseNetwork(base_model = PARAMS['model_name'], num_classes = num_classes).to(PARAMS['DEVICE'])
     model = SiameseNetwork(base_model = PARAMS['model_name'], num_classes = num_classes, fixed = PARAMS['fixed']).to(PARAMS['DEVICE'] )
 
     model = model.to(PARAMS['DEVICE'])
 
-    optimizer = optim.SGD(model.parameters(), lr=PARAMS['lr'], momentum=PARAMS['momentum'])
+    center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*224*224, use_gpu=False)
+    params = list(model.parameters()) + list(center_loss.parameters())
+    optimizer = torch.optim.SGD(params, lr=PARAMS['lr'], momentum=PARAMS['momentum'])
+
+    # optimizer = optim.SGD(model.parameters(), lr=PARAMS['lr'], momentum=PARAMS['momentum'])
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = 7, gamma = 0.9)
     criterion =  F.cross_entropy
     current_acc = 0
 
     for epoch in range(1, PARAMS['epochs'] + 1):
-        train(PARAMS, model,criterion, PARAMS['DEVICE'], train_loader, optimizer, epoch)
-        current_acc = test(PARAMS, model,criterion, PARAMS['DEVICE'], test_loader,optimizer,epoch,current_acc)
+        train(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], train_loader, optimizer, epoch, PARAMS['alpha'])
+        current_acc = test(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], test_loader,optimizer,epoch,current_acc, PARAMS['alpha'])
         scheduler.step()
     torch.save(model, 'new_saved_models/{}_{}_{}_proposed_nodiff.pth'.format(date.today(),PARAMS['model_name'],round(current_acc,2)))
 
