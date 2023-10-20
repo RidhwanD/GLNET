@@ -14,9 +14,11 @@ import os
 import shutil
 from datetime import date
 from torchvision.models import resnet50,alexnet,vgg16
+from center_loss import CenterLoss
 
 
-def train(PARAMS, model, criterion, device, train_loader, optimizer, epoch):
+
+def train(PARAMS, model, criterion, center_loss, device, train_loader, optimizer, epoch, alpha):
     t0 = time.time()
     model.train()
     correct = 0
@@ -26,9 +28,19 @@ def train(PARAMS, model, criterion, device, train_loader, optimizer, epoch):
         optimizer.zero_grad()
         output = model(img)
 
-        loss = criterion(output, target )
+        loss = center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)
+        optimizer.zero_grad()
         loss.backward()
+        for param in center_loss.parameters():
+            # lr_cent is learning rate for center loss, e.g. lr_cent = 0.5
+            param.grad.data *= (PARAMS['lr'] / (alpha * PARAMS['lr']))
         optimizer.step()
+
+        # loss = criterion(output, target)
+        # print(output[0],output[0].shape)
+        # loss.backward()
+        # optimizer.step()
+        
         pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
     
@@ -83,6 +95,7 @@ def main():
                 'criterion':'cross_entropy',
                 'model_name': args.model,
                 'dataset': args.dataset,
+                'alpha':0.5,
                 }
 
 
@@ -115,7 +128,7 @@ def main():
     train_loader = DataLoader(train_dataset,  batch_size=PARAMS['bs'], shuffle=True, num_workers=4, pin_memory = True )
     test_loader =  DataLoader(test_dataset, batch_size=PARAMS['bs'], shuffle=True,  num_workers=4, pin_memory = True  )
 
-
+    
 
     num_classes = len(train_dataset.classes)
     if PARAMS['model_name'] == 'vgg16':
@@ -131,14 +144,22 @@ def main():
     
    
     model = model.to(PARAMS['DEVICE'])   
-    optimizer = optim.SGD(model.parameters(), lr=PARAMS['lr'], momentum=PARAMS['momentum'])
+    
+    center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*256*256, use_gpu=False)
+    params = list(model.parameters()) + list(center_loss.parameters())
+    optimizer = torch.optim.SGD(params, lr=PARAMS['lr'], momentum=PARAMS['momentum'])
+    
+    # optimizer = optim.SGD(model.parameters(), lr=PARAMS['lr'], momentum=PARAMS['momentum'])
+    
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = 7, gamma = 0.9)
     criterion =  F.cross_entropy
+    
     acc = 0
 
     if not args.evaluate_model:
         for epoch in range(1, PARAMS['epochs'] + 1):
-            train(PARAMS, model,criterion, PARAMS['DEVICE'], train_loader, optimizer, epoch)
+            # train(PARAMS, model,criterion, PARAMS['DEVICE'], train_loader, optimizer, epoch)
+            train(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], train_loader, optimizer, epoch, PARAMS['alpha'])
             acc = test(PARAMS, model,criterion, PARAMS['DEVICE'], test_loader,optimizer,epoch,acc)
             scheduler.step()
         torch.save(model.state_dict(), 'saved_models/{}_{}_{}_{}_baseline.pth'.format(args.dataset, date.today(), PARAMS['model_name'], round(acc,2)))
