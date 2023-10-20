@@ -137,20 +137,20 @@ def main():
                             transforms.ToPILImage(),
                             transforms.RandomHorizontalFlip(),
                             transforms.ColorJitter(0.4, 0.4, 0.4),
-                            transforms.Resize((224,224)),
+                            transforms.Resize((256,256)),
                             transforms.ToTensor(),
                             transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
     else:
         train_transform = transforms.Compose(
                 [ 
                     transforms.ToPILImage(),
-                    transforms.Resize((224,224)),
+                    transforms.Resize((256,256)),
                     transforms.ToTensor(),
                     transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
     test_transform = transforms.Compose(
             [ 
                 transforms.ToPILImage(),
-                transforms.Resize((224,224)),
+                transforms.Resize((256,256)),
                 transforms.ToTensor(),
                 transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
 
@@ -170,7 +170,7 @@ def main():
 
     model = model.to(PARAMS['DEVICE'])
 
-    center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*224*224, use_gpu=False)
+    center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*256*256, use_gpu=False)
     params = list(model.parameters()) + list(center_loss.parameters())
     optimizer = torch.optim.SGD(params, lr=PARAMS['lr'], momentum=PARAMS['momentum'])
 

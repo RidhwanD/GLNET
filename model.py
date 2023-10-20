@@ -7,7 +7,7 @@ import numpy as np
 
 torch.nn.Module.dump_patches = True
 class SiameseNetwork(nn.Module):
-    def __init__(self,base_model ='vgg16',num_classes = 5 , fixed = False,out_features_dim = 128):
+    def __init__(self,base_model ='vgg16',num_classes = 5 , fixed = False, out_features_dim = 256):
         super(SiameseNetwork, self).__init__()
         self.base_model = base_model
         self.num_classes = num_classes
@@ -16,7 +16,7 @@ class SiameseNetwork(nn.Module):
 
         self.lower_model = self.make_back_bone(self.base_model)
         self.upper_backbone = self.make_back_bone(self.base_model)
-        self.fc1 = nn.Linear(in_features=6*8*4, out_features=self.num_classes, bias=True)
+        self.fc1 = nn.Linear(in_features=6*8*8, out_features=self.num_classes, bias=True)
         self.prelu = nn.PReLU()
         self.avgpool = nn.AvgPool2d(2)
 
@@ -59,21 +59,19 @@ class SiameseNetwork(nn.Module):
         output_list = []
         for index,image in enumerate(cluster_data):
             output_list.append(self.upper_backbone(image))
-         
             output_list[index] = torch.unsqueeze(output_list[index],1)
 
         x_upper = torch.cat((output_list),1)
-        x_upper = x_upper.view(x_upper.shape[0],5,32,4)
+        x_upper = x_upper.view(x_upper.shape[0],5,16,16)
 
         x_lower = self.lower_model(img)
         x_lower = torch.unsqueeze(x_lower,1)
-        x_lower = x_lower.view(x_lower.shape[0],1,32,4)
+        x_lower = x_lower.view(x_lower.shape[0],1,16,16)
 
         x = torch.cat((x_upper,x_lower), dim = 1)
         x = self.avgpool(x)
-
-        x = x.view(x.size(0), -1) 
-        # print(x.shape)
+        
+        x = x.view(x.size(0), -1)
         x = self.fc1(x)
 
         return x
