@@ -50,7 +50,7 @@ def train(PARAMS, model, criterion, center_loss, device, train_loader, optimizer
         100. * batch_idx / len(train_loader), loss.item(),time.time() - t0))
 
 
-def test(PARAMS, model,criterion, device, test_loader,optimizer,epoch,best_acc):
+def test(PARAMS, model,criterion, center_loss, device, test_loader,optimizer,epoch,best_acc, alpha):
     model.eval()
     test_loss = 0
     correct = 0
@@ -61,7 +61,8 @@ def test(PARAMS, model,criterion, device, test_loader,optimizer,epoch,best_acc):
             img, target = img.to(device), target.to(device)
             output = model(img)
 
-            test_loss += criterion(output, target).item() # sum up batch loss
+            # test_loss += criterion(output, target).item() # sum up batch loss
+            test_loss += (center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)).item()
             pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
             # Save the first input tensor in each test batch as an example image
@@ -160,13 +161,13 @@ def main():
         for epoch in range(1, PARAMS['epochs'] + 1):
             # train(PARAMS, model,criterion, PARAMS['DEVICE'], train_loader, optimizer, epoch)
             train(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], train_loader, optimizer, epoch, PARAMS['alpha'])
-            acc = test(PARAMS, model,criterion, PARAMS['DEVICE'], test_loader,optimizer,epoch,acc)
+            acc = test(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], test_loader,optimizer,epoch,acc, PARAMS['alpha'])
             scheduler.step()
         torch.save(model.state_dict(), 'saved_models/{}_{}_{}_{}_baseline.pth'.format(args.dataset, date.today(), PARAMS['model_name'], round(acc,2)))
         # torch.save(model, 'saved_models/{}_{}_{}_{}_baseline.pth'.format(args.dataset, date.today(), PARAMS['model_name'], round(acc,2)))
     else:
         model = torch.load(args.evaluate_model)
-        acc = test(PARAMS, model,criterion, PARAMS['DEVICE'], test_loader, optimizer, 0, acc)
+        acc = test(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], test_loader, optimizer, 0, acc, PARAMS['alpha'])
         print(f'the evalutaion acc is {acc}')
 
 
