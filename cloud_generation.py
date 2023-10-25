@@ -40,27 +40,64 @@ def add_cloud(file_name, file_name_save, k):
     res[:,:,2] = (img[:,:,2] * fourground_map + cloud_map) / 256
     
     plt.imsave(file_name_save.replace('.jpg', '_cloud.png'), res)
-    print(file_name_save.replace('.jpg', '_cloud.png'))
     
     return cloud_map, res.astype(np.uint8),fourground_map
 
 def main():
-    dataset = "NWPU-RESISC45"
+    mode = "mixed" # 'all': all cloudy, 'mixed': mixed of cloudy and clear with c_perc% cloudy
+    c_perc = 50  # percentage of cloudy image for mixed mode only
+    dataset = "WHU-RS19"
 
-    dataPath_test = "data/"+dataset+"/test_dataset-ori"
-    dataPath_test_cloudy = "data/"+dataset+"/test_dataset"
-    dataPath_train = "data/"+dataset+"/train_dataset-ori"
-    dataPath_train_cloudy = "data/"+dataset+"/train_dataset"
+    dataPath_test = os.path.join("data", dataset, "test_dataset-clear")
+    dataPath_test_cloudy = os.path.join("data", dataset, "test_dataset")
+    dataPath_train = os.path.join("data", dataset, "train_dataset-clear")
+    dataPath_train_cloudy = os.path.join("data", dataset, "train_dataset")
     
     label = os.listdir(dataPath_test)
 
     for l in label:
-        imgs = os.listdir(dataPath_test+"/"+l)
-        for img in imgs:
-            add_cloud(dataPath_test+"/"+l+"/"+img,dataPath_test_cloudy+"/"+l+"/"+img,2)
-        imgs = os.listdir(dataPath_train+"/"+l)
-        for img in imgs:
-            add_cloud(dataPath_train+"/"+l+"/"+img,dataPath_train_cloudy+"/"+l+"/"+img,2)
+        if (mode == "all"):
+            imgs = os.listdir(os.path.join(dataPath_test, l))
+            if not os.path.exists(os.path.join(dataPath_test_cloudy, l)):
+                os.mkdir(os.path.join(dataPath_test_cloudy, l))
+            for img in imgs:
+                add_cloud(os.path.join(dataPath_test, l, img),os.path.join(dataPath_test_cloudy, l, img),2)
+            
+            imgs = os.listdir(os.path.join(dataPath_train, l))
+            if not os.path.exists(os.path.join(dataPath_train_cloudy, l)):
+                os.mkdir(os.path.join(dataPath_train_cloudy, l))
+            for img in imgs:
+                add_cloud(os.path.join(dataPath_train, l, img),os.path.join(dataPath_train_cloudy, l, img),2)
+        elif (mode == "mixed"):
+            imgs = os.listdir(os.path.join(dataPath_test, l))
+            num_test = len([name for name in imgs if os.path.isfile(os.path.join(dataPath_test, l, name))])
+            test_num = int(c_perc/100 * num_test)
+            idx_test = random.sample(range(1, num_test), test_num)
+            if not os.path.exists(os.path.join(dataPath_test_cloudy, l)):
+                os.mkdir(os.path.join(dataPath_test_cloudy, l))
+            idx = 1
+            for img in imgs:
+                if idx in idx_test:
+                    add_cloud(os.path.join(dataPath_test, l, img),os.path.join(dataPath_test_cloudy, l, img),2)
+                else:
+                    shutil.copyfile(os.path.join(dataPath_test, l, img),
+                        os.path.join(dataPath_test_cloudy, l, img))
+                idx += 1
+            
+            imgs = os.listdir(os.path.join(dataPath_train, l))
+            num_train = len([name for name in imgs if os.path.isfile(os.path.join(dataPath_train, l, name))])
+            train_num = int(c_perc/100 * num_train)
+            idx_train = random.sample(range(1, num_train), train_num)
+            if not os.path.exists(os.path.join(dataPath_train_cloudy, l)):
+                os.mkdir(os.path.join(dataPath_train_cloudy, l))
+            idx = 1
+            for img in imgs:
+                if idx in idx_train:
+                    add_cloud(os.path.join(dataPath_train, l, img),os.path.join(dataPath_train_cloudy, l, img),2)
+                else:
+                    shutil.copyfile(os.path.join(dataPath_train, l, img),
+                        os.path.join(dataPath_train_cloudy, l, img))
+                idx += 1
 
 if __name__ == '__main__':
     main()
