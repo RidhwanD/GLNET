@@ -25,20 +25,20 @@ torchvision
 
 
 ## Usage
-1. clone this repo
+1. Clone this repo
     ```
     git clone https://github.com/ridhwand/GLNET.git
     ```
 
-2. download the dataset from [google drive](https://drive.google.com/drive/folders/1W2sQAHJ6IKiih8bvrFhMfkujOxNyqjO1?usp=sharing) 
+2. Download the dataset from [google drive](https://drive.google.com/drive/folders/1W2sQAHJ6IKiih8bvrFhMfkujOxNyqjO1?usp=sharing) and preprocessed it accordingly
 
-3. train the baseline model
+3. Train the baseline model
     ```
     python baseline.py
     ```
-4. load the model dir you trained in model.py
+4. Load the saved model you trained in model.py
 
-5. run the training by command 
+5. Run the training for GLNet by command 
     ```
     python train.py
     ```
