@@ -106,7 +106,7 @@ def main():
     parser = argparse.ArgumentParser(description='manual to this script')  
     parser.add_argument('--model', type=str, default = 'vgg16')
     parser.add_argument('--partion', type=float, default=0.5)
-    parser.add_argument('--bs', type=int, default=8)
+    parser.add_argument('--bs', type=int, default=4)
     parser.add_argument('--fixed',type=boolean_string, default=False)
     parser.add_argument('--Augmentation',type=boolean_string, default=False)
     parser.add_argument('--debug',type=boolean_string, default=False)
@@ -115,7 +115,7 @@ def main():
     
     PARAMS = {'DEVICE': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
                 'bs': args.bs,
-                'epochs':20,
+                'epochs':50,
                 'lr': 0.0006,
                 'momentum': 0.5,
                 'log_interval':10,
@@ -170,7 +170,7 @@ def main():
 
     model = model.to(PARAMS['DEVICE'])
 
-    center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*256*256, use_gpu=False)
+    center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*256*256, use_gpu=True)
     params = list(model.parameters()) + list(center_loss.parameters())
     optimizer = torch.optim.SGD(params, lr=PARAMS['lr'], momentum=PARAMS['momentum'])
 

@@ -28,18 +28,17 @@ def train(PARAMS, model, criterion, center_loss, device, train_loader, optimizer
         optimizer.zero_grad()
         output = model(img)
 
-        loss = center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)
-        optimizer.zero_grad()
-        loss.backward()
-        for param in center_loss.parameters():
-            # lr_cent is learning rate for center loss, e.g. lr_cent = 0.5
-            param.grad.data *= (PARAMS['lr'] / (alpha * PARAMS['lr']))
-        optimizer.step()
-
-        # loss = criterion(output, target)
-        # print(output[0],output[0].shape)
+        # loss = center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)
+        # optimizer.zero_grad()
         # loss.backward()
+        # for param in center_loss.parameters():
+            # lr_cent is learning rate for center loss, e.g. lr_cent = 0.5
+            # param.grad.data *= (PARAMS['lr'] / (alpha * PARAMS['lr']))
         # optimizer.step()
+
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()
         
         pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
@@ -61,8 +60,8 @@ def test(PARAMS, model,criterion, center_loss, device, test_loader,optimizer,epo
             img, target = img.to(device), target.to(device)
             output = model(img)
 
-            # test_loss += criterion(output, target).item() # sum up batch loss
-            test_loss += (center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)).item()
+            test_loss += criterion(output, target).item() # sum up batch loss
+            # test_loss += (center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)).item()
             pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
             # Save the first input tensor in each test batch as an example image
@@ -77,19 +76,17 @@ def test(PARAMS, model,criterion, center_loss, device, test_loader,optimizer,epo
     return current_acc
 
 def main():
-
-
     parser = argparse.ArgumentParser(description='manual to this script')
     parser.add_argument('--model', type=str, default = 'vgg16')
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--evaluate_model', type=str)
-    parser.add_argument('--dataset', type=str, default='rsscn7')
+    parser.add_argument('--dataset', type=str, default = 'rsscn7')
 
     args = parser.parse_args()
 
     PARAMS = {'DEVICE': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-                'bs': 8,
-                'epochs':20,
+                'bs': 4,
+                'epochs':50,
                 'lr': 0.0006,
                 'momentum': 0.5,
                 'log_interval':10,
@@ -124,6 +121,9 @@ def main():
     elif args.dataset == 'NWPU-RESISC45':
         train_dataset = datasets.ImageFolder(root='data/NWPU-RESISC45/train_dataset/',transform = train_transform)
         test_dataset = datasets.ImageFolder(root='data/NWPU-RESISC45/test_dataset/',transform = test_transform)
+    elif args.dataset == 'WHU-RS19':
+        train_dataset = datasets.ImageFolder(root='data/WHU-RS19/train_dataset/',transform = train_transform)
+        test_dataset = datasets.ImageFolder(root='data/WHU-RS19/test_dataset/',transform = test_transform)
 
     print(PARAMS)
     train_loader = DataLoader(train_dataset,  batch_size=PARAMS['bs'], shuffle=True, num_workers=4, pin_memory = True )
@@ -144,13 +144,14 @@ def main():
 
     
    
-    model = model.to(PARAMS['DEVICE'])   
+    model = model.to(PARAMS['DEVICE'])
     
-    center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*256*256, use_gpu=False)
-    params = list(model.parameters()) + list(center_loss.parameters())
-    optimizer = torch.optim.SGD(params, lr=PARAMS['lr'], momentum=PARAMS['momentum'])
+    # center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*256*256, use_gpu=True)
+    # params = list(model.parameters()) + list(center_loss.parameters())
+    # optimizer = torch.optim.SGD(params, lr=PARAMS['lr'], momentum=PARAMS['momentum'])
     
-    # optimizer = optim.SGD(model.parameters(), lr=PARAMS['lr'], momentum=PARAMS['momentum'])
+    center_loss = None
+    optimizer = optim.SGD(model.parameters(), lr=PARAMS['lr'], momentum=PARAMS['momentum'])
     
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = 7, gamma = 0.9)
     criterion =  F.cross_entropy
