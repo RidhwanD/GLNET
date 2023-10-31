@@ -1,6 +1,6 @@
 # Convolutional Neural Networks Based Remote Sensing Scene Classification under Clear and Cloudy Environments
-Accepted by ICCVW 2021
-
+Original Paper by Sun et al. accepted by ICCVW 2021
+Modified by Ridhwan D.
 
 
 ### Remote Sensing scene image classification under clear and cloudy environments. 
@@ -26,10 +26,10 @@ torchvision
 ## Usage
 1. clone this repo
     ```
-    git clone https://github.com/wuchangsheng951/GLNET.git
+    git clone https://github.com/ridhwand/GLNET.git
     ```
 
-2. download the dataset from [google drive](https://drive.google.com/file/d/1F_68mh40vNLOwila32GBYNHVEZI1HiTT/view?usp=sharing) 
+2. download the dataset from [google drive](https://drive.google.com/drive/folders/1W2sQAHJ6IKiih8bvrFhMfkujOxNyqjO1?usp=sharing) 
 
 3. train the baseline model
     ```
