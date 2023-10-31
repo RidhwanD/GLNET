@@ -1,5 +1,6 @@
 # Convolutional Neural Networks Based Remote Sensing Scene Classification under Clear and Cloudy Environments
 Original Paper by Sun et al. accepted by ICCVW 2021
+
 Modified by Ridhwan D.
 
 
