@@ -121,8 +121,6 @@ def main():
 
 
     # Training settings
-    print(PARAMS['DEVICE'])
-
     if PARAMS['Augmentation']:
         train_transform = transforms.Compose(
                         [ 

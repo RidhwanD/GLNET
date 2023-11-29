@@ -13,7 +13,9 @@ class SiameseNetwork(nn.Module):
 
         self.lower_model = self.make_back_bone(self.base_model)
         self.upper_backbone = self.make_back_bone(self.base_model)
+        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc1 = nn.Linear(in_features=6*8*8, out_features=self.num_classes, bias=True)
+        self.fcn1 = nn.Linear(in_features=512,out_features=self.out_features_dim)
         self.prelu = nn.PReLU()
         self.avgpool = nn.AvgPool2d(2)
         
@@ -24,15 +26,15 @@ class SiameseNetwork(nn.Module):
         if base_model == 'vgg16':
             model = models.vgg16(weights='VGG16_Weights.DEFAULT')
             model.classifier[-1] =  nn.Linear(in_features=4096, out_features=self.num_classes, bias=True)
-            weights = torch.load('saved_models/WHU-RS19_2023-11-29_vgg16_90.4_baseline.pth')           # Use saved parameters
+            weights = torch.load('saved_models/WHU-RS19_2023-11-29_vgg16_91.4_baseline.pth')           # Use saved parameters
             model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
                     param.requires_grad = False
                 else:
                     param.requires_grad = True
-            model.classifier[-1] = nn.Linear(in_features=4096,out_features=self.out_features_dim)
-            return model
+            # model.classifier[-1] = nn.Linear(in_features=4096,out_features=self.out_features_dim)
+            return model.features
 
         if base_model == 'alexnet':
             model = models.alexnet(weights='AlexNet_Weights.DEFAULT')
@@ -82,20 +84,26 @@ class SiameseNetwork(nn.Module):
 
 
     def forward(self, img, cluster_data):
+        x_lower = self.lower_model(img).requires_grad_(True)
+        _ = x_lower.register_hook(self.activations_hook_image1)
+        x_lower = self.global_pool(x_lower)
+        x_lower = x_lower.view(x_lower.size(0), -1)
+        x_lower = self.fcn1(x_lower)
+        x_lower = torch.unsqueeze(x_lower,1)
+        x_lower = x_lower.view(x_lower.shape[0],1,16,16)
+        
         output_list = []
         for index,image in enumerate(cluster_data):
-            output_list.append(self.upper_backbone(image))
+            output = self.upper_backbone(image)
+            output = self.global_pool(output)
+            output = output.view(output.size(0), -1)
+            output_list.append(self.fcn1(output))
             output_list[index] = torch.unsqueeze(output_list[index],1)
 
         x_upper = torch.cat((output_list),1).requires_grad_(True)
         _ = x_upper.register_hook(self.activations_hook_image2)
         x_upper = x_upper.view(x_upper.shape[0],5,16,16)
-
-        x_lower = self.lower_model(img).requires_grad_(True)
-        _ = x_lower.register_hook(self.activations_hook_image1)  
-        x_lower = torch.unsqueeze(x_lower,1)
-        x_lower = x_lower.view(x_lower.shape[0],1,16,16)
-
+        
         x = torch.cat((x_upper,x_lower), dim = 1)
         x = self.avgpool(x)
         

@@ -2,7 +2,6 @@ import numpy as np
 import torch
 from torchvision import transforms
 import matplotlib.pyplot as plt
-from PIL import Image
 import cv2
 from model import SiameseNetwork
 
@@ -55,11 +54,11 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     
     # pull the gradients out of the model
     gradients = model.get_activations_gradient(sub_network=sub_network)
-    print(gradients)
-    print(gradients.shape)
+    # print(gradients.shape)
 
     # pool the gradients across the channels
-    pooled_gradients = torch.mean(gradients, dim=[0])
+    pooled_gradients = torch.mean(gradients, dim=[0,2,3])
+    # print("Pooled Grads", pooled_gradients)
 
     # get the activations of the last convolutional layer
     activations = model.get_activations(image).detach()
@@ -67,10 +66,13 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     # weight the channels by corresponding gradients
     for i in range(activations.shape[1]):
         activations[:, i, :, :] *= pooled_gradients[i]
+    
+    # print("Activations", activations)
         
     # average the channels of the activations
     heatmap = torch.mean(activations, dim=1).squeeze()
 
+    # print("Heatmap", heatmap)
     # relu on top of the heatmap
     # expression (2) in https://arxiv.org/pdf/1610.02391.pdf
     heatmap = torch.where(heatmap > 0, heatmap, 0)
