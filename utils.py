@@ -59,7 +59,6 @@ def generateCluster(img, transform, partion=0.6, size=256):
     bottom_left  =   cv2.resize(img[-width:,:length],(size,size))
     mid = img[int((1-partion)/2*(img.shape[0])):-int((1-partion)/2*(img.shape[0])),int((1-partion)/2*(img.shape[1])):-int((1-partion)/2*(img.shape[1]))]
     cluster_data = upper_left,upper_right,bottom_right,bottom_left,mid
-    print(mid.shape)
     img = transform(img)
     cluster_data = [transform(i) for i in cluster_data]
     # label = self.imgs[index][1]

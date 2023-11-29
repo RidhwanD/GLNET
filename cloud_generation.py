@@ -2,8 +2,6 @@ import os
 import random
 import shutil
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import matplotlib
 import numpy as np
 import skimage.transform
 import cv2
@@ -39,19 +37,23 @@ def add_cloud(file_name, file_name_save, k):
     res[:,:,1] = (img[:,:,1] * fourground_map + cloud_map) / 256
     res[:,:,2] = (img[:,:,2] * fourground_map + cloud_map) / 256
     
+    window_name = 'image'
+    cv2.imshow(window_name, img)
+    
     plt.imsave(file_name_save.replace('.jpg', '_cloud.png'), res)
     
     return cloud_map, res.astype(np.uint8),fourground_map
 
 def main():
-    mode = "mixed" # 'all': all cloudy, 'mixed': mixed of cloudy and clear with c_perc% cloudy
+    mode = "all" # 'all': all cloudy, 'mixed': mixed of cloudy and clear with c_perc% cloudy
     c_perc = 50  # percentage of cloudy image for mixed mode only
     dataset = "WHU-RS19"
+    print("Generating",mode,"cloudy",dataset)
 
     dataPath_test = os.path.join("data", dataset, "test_dataset-clear")
-    dataPath_test_cloudy = os.path.join("data", dataset, "test_dataset")
+    dataPath_test_cloudy = os.path.join("data", dataset, "test_dataset-all")
     dataPath_train = os.path.join("data", dataset, "train_dataset-clear")
-    dataPath_train_cloudy = os.path.join("data", dataset, "train_dataset")
+    dataPath_train_cloudy = os.path.join("data", dataset, "train_dataset-all")
     
     label = os.listdir(dataPath_test)
 
