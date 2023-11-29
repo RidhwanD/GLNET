@@ -5,16 +5,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-from torch.utils.data import TensorDataset, DataLoader, Dataset,SubsetRandomSampler
+from torch.utils.data import DataLoader
 from torchvision import models
 import time
-from RS_Dataset import RS_Dataset
 from tqdm import tqdm
-import os 
-import shutil
 from datetime import date
-from torchvision.models import resnet50,alexnet,vgg16
-from center_loss import CenterLoss
+# from center_loss import CenterLoss
 
 
 
@@ -25,7 +21,7 @@ def train(PARAMS, model, criterion, center_loss, device, train_loader, optimizer
 
     for batch_idx, (img, target) in enumerate(tqdm(train_loader)):
         img,  target = img.to(device), target.to(device)
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=False)
         output = model(img)
 
         # loss = center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)
@@ -35,7 +31,8 @@ def train(PARAMS, model, criterion, center_loss, device, train_loader, optimizer
             # lr_cent is learning rate for center loss, e.g. lr_cent = 0.5
             # param.grad.data *= (PARAMS['lr'] / (alpha * PARAMS['lr']))
         # optimizer.step()
-
+        
+        # torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm='inf')
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
@@ -54,7 +51,6 @@ def test(PARAMS, model,criterion, center_loss, device, test_loader,optimizer,epo
     test_loss = 0
     correct = 0
 
-    example_images = []
     with torch.no_grad():
         for batch_idx, (img, target) in enumerate(tqdm(test_loader)):
             img, target = img.to(device), target.to(device)
@@ -80,13 +76,13 @@ def main():
     parser.add_argument('--model', type=str, default = 'vgg16')
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--evaluate_model', type=str)
-    parser.add_argument('--dataset', type=str, default = 'rsscn7')
+    parser.add_argument('--dataset', type=str, default = 'WHU-RS19')
 
     args = parser.parse_args()
 
     PARAMS = {'DEVICE': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
                 'bs': 4,
-                'epochs':50,
+                'epochs':5,
                 'lr': 0.0006,
                 'momentum': 0.5,
                 'log_interval':10,
@@ -134,13 +130,13 @@ def main():
     num_classes = len(train_dataset.classes)
     if PARAMS['model_name'] == 'vgg16':
         model = models.vgg16(weights='VGG16_Weights.DEFAULT')
-        model.fc =  nn.Linear(in_features=4096, out_features=num_classes, bias=True)
+        model.classifier[-1] =  nn.Linear(in_features=4096, out_features=num_classes, bias=True)
     elif PARAMS['model_name'] == 'resnet50':
         model = models.resnet50(weights='ResNet50_Weights.DEFAULT')
         model.fc =  nn.Linear(in_features=2048, out_features=num_classes, bias=True)
     elif PARAMS['model_name'] == 'alexnet':
         model = models.alexnet(weights='AlexNet_Weights.DEFAULT')
-        model.fc =  nn.Linear(in_features=4096, out_features=num_classes, bias=True)    
+        model.classifier[-1] =  nn.Linear(in_features=4096, out_features=num_classes, bias=True)    
 
     
    
