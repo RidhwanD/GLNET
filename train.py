@@ -1,20 +1,13 @@
 from __future__ import print_function
 import argparse
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from torchvision import datasets, transforms
-from torch.utils.data import TensorDataset, DataLoader, Dataset, SubsetRandomSampler
-from torchvision import models
+from torchvision import transforms
+from torch.utils.data import DataLoader
 import time
 from RS_Dataset import RS_Dataset
 from tqdm import tqdm
-import os 
-import shutil
 from datetime import date
-import argparse
-from torchvision.models import resnet50,alexnet,vgg16
 from model import SiameseNetwork
 from center_loss import CenterLoss
 
@@ -29,12 +22,11 @@ def train(PARAMS, model, criterion, center_loss, device, train_loader, optimizer
     for batch_idx, (img, cluster,  target) in enumerate(tqdm(train_loader)):
         img,  target = img.to(device),  target.to(device)
         cluster =  [item.to(device) for item in cluster ]
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=False)
+        
         output = model(img,cluster)
-        # output = model(img)
-
         loss = center_loss(torch.flatten(img, start_dim=1), target) * alpha + criterion(output, target)
-        optimizer.zero_grad()
+        
         loss.backward()
         for param in center_loss.parameters():
             # lr_cent is learning rate for center loss, e.g. lr_cent = 0.5
@@ -66,7 +58,6 @@ def test(PARAMS, model,criterion, center_loss, device, test_loader,optimizer,epo
     test_loss = 0
     correct = 0
 
-    example_images = []
     with torch.no_grad():
         for batch_idx, (img, cluster, target) in enumerate(tqdm(test_loader)):
             img, target = img.to(device), target.to(device)
@@ -115,7 +106,7 @@ def main():
     
     PARAMS = {'DEVICE': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
                 'bs': args.bs,
-                'epochs':50,
+                'epochs':5,
                 'lr': 0.0006,
                 'momentum': 0.5,
                 'log_interval':10,
@@ -130,6 +121,7 @@ def main():
 
 
     # Training settings
+    print(PARAMS['DEVICE'])
 
     if PARAMS['Augmentation']:
         train_transform = transforms.Compose(
@@ -156,9 +148,9 @@ def main():
 
 
     train_dataset = RS_Dataset(
-        root='data/rsscn7/train_dataset',transform = train_transform)
+        root='data/WHU-RS19/train_dataset',transform = train_transform)
     test_dataset = RS_Dataset(
-        root='data/rsscn7/test_dataset',transform = test_transform)
+        root='data/WHU-RS19/test_dataset',transform = test_transform)
 
     print(PARAMS)
     train_loader = DataLoader(train_dataset,  batch_size=PARAMS['bs'], shuffle=True, num_workers=4, pin_memory = True )
