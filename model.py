@@ -20,7 +20,7 @@ class SiameseNetwork(nn.Module):
         self.avgpool = nn.AvgPool2d(2)
         
         self.gradients_1 = None
-        self.gradients_2 = None
+        self.gradients_2 = [None, None, None, None, None]
 
     def make_back_bone(self,base_model):
         if base_model == 'vgg16':
@@ -74,14 +74,17 @@ class SiameseNetwork(nn.Module):
     # hook for the gradients of the activations
     def activations_hook_image1(self, grad):
         self.gradients_1 = grad
-    def activations_hook_image2(self, grad):
-        self.gradients_2 = grad
+    def activations_hook_image2(self, grad, index):
+        self.gradients_2[index] = grad
         
-    def get_activations_gradient(self, sub_network=1):
+    def get_activations_gradient(self, sub_network=1, sub_input=None):
         if sub_network == 1:
             return self.gradients_1
         else:
-            return self.gradients_2
+            if (sub_input):
+                return self.gradients_2[sub_input]
+            else:
+                return self.gradients_2
 
 
 
@@ -100,7 +103,8 @@ class SiameseNetwork(nn.Module):
         
         output_list = []
         for index,image in enumerate(cluster_data):
-            output = self.upper_backbone(image)
+            output = self.upper_backbone(image).requires_grad_(True)
+            _ = output.register_hook(lambda grad: self.activations_hook_image2(grad, index))
             if (self.base_model == 'alexnet'):
                 output = self.adaptive_pool(output)
                 output = output.view(output.size(0), -1)
@@ -110,8 +114,8 @@ class SiameseNetwork(nn.Module):
             output_list.append(self.fcn1(output))
             output_list[index] = torch.unsqueeze(output_list[index],1)
 
-        x_upper = torch.cat((output_list),1).requires_grad_(True)
-        _ = x_upper.register_hook(self.activations_hook_image2)
+        x_upper = torch.cat((output_list),1) # .requires_grad_(True)
+        # _ = x_upper.register_hook(self.activations_hook_image2)
         x_upper = x_upper.view(x_upper.shape[0],5,16,16)
         
         x = torch.cat((x_upper,x_lower), dim = 1)

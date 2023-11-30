@@ -4,6 +4,7 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 import cv2
 from model import SiameseNetwork
+from utils import calculate_mid_size
 
 '''
     Reference:
@@ -104,3 +105,46 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
             )
 
     return heatmap
+
+def combineHeatmap(heatmaps, mode='max'):
+    '''
+        Combine several heatmaps into one
+
+        Parameters
+        ----------
+        heatmaps: an np.array containing heatmaps to combine
+        mode: mode of combination
+
+        Returns
+        -------
+        combined heatmap
+    '''
+    if (mode == 'max'):
+        final_heatmap = np.amax(heatmaps, axis=0)
+    elif (mode == 'mean'):
+        final_heatmap = np.mean(heatmaps, axis=0)
+    final_heatmap = np.uint8(final_heatmap.astype(int))
+    
+    
+    fig = plt.imshow(final_heatmap);
+    fig.axes.get_xaxis().set_visible(False)
+    fig.axes.get_yaxis().set_visible(False)
+    
+    return final_heatmap
+
+def heatmapGLNet(img, cluster, size, partition, model):
+    heatmap = Grad_CAM_heatmap(img, model, 1, (size[0],size[1]),'F')
+    all_heatmaps = [heatmap]
+    w = size[0] - int(partition*size[0])
+    h = size[1] - int(partition*size[1])
+    m_w, m_h = calculate_mid_size(size, partition)
+    m_w, m_h = int((size[0] - m_w) / 2), int((size[1] - m_h) / 2)
+    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[0], model, 1, (int(0.6*size[0]),int(0.6*size[1])),'F'), ((0, h), (0, h)), 'constant', constant_values=0))
+    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[1], model, 1, (int(0.6*size[0]),int(0.6*size[1])),'F'), ((0, h), (w, 0)), 'constant', constant_values=0))
+    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[2], model, 1, (int(0.6*size[0]),int(0.6*size[1])),'F'), ((w, 0), (w, 0)), 'constant', constant_values=0))
+    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[3], model, 1, (int(0.6*size[0]),int(0.6*size[1])),'F'), ((w, 0), (0, h)), 'constant', constant_values=0))
+    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[4], model, 1, (calculate_mid_size(size, 0.6)),'F'), ((m_w, m_h), (m_w, m_h)), 'constant', constant_values=0))
+    all_heatmaps = np.array(all_heatmaps)
+    final_heatmap = combineHeatmap(all_heatmaps,'max')
+    
+    return final_heatmap

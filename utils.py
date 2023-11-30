@@ -64,3 +64,16 @@ def generateCluster(img, transform, partion=0.6, size=256):
     # label = self.imgs[index][1]
     
     return img, cluster_data
+
+def calculate_mid_size(image_size, partion):
+    original_height, original_width = image_size
+    start_h = int((1 - partion) / 2 * original_height)
+    end_h = original_height - start_h
+    start_w = int((1 - partion) / 2 * original_width)
+    end_w = original_width - start_w
+
+    height_mid = end_h - start_h
+    width_mid = end_w - start_w
+
+    return height_mid, width_mid
+
