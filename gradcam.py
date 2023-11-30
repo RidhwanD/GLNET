@@ -54,29 +54,29 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     
     # pull the gradients out of the model
     gradients = model.get_activations_gradient(sub_network=sub_network)
-    # print(gradients.shape)
+    #print(gradients)
 
     # pool the gradients across the channels
     pooled_gradients = torch.mean(gradients, dim=[0,2,3])
-    # print("Pooled Grads", pooled_gradients)
+    #print("Pooled Grads", pooled_gradients)
 
     # get the activations of the last convolutional layer
     activations = model.get_activations(image).detach()
 
     # weight the channels by corresponding gradients
     for i in range(activations.shape[1]):
-        activations[:, i, :, :] *= pooled_gradients[i]
-    
-    # print("Activations", activations)
+        activations[:, i, :, :] *= pooled_gradients[i]    
+    #print("Activations", activations)
         
     # average the channels of the activations
     heatmap = torch.mean(activations, dim=1).squeeze()
-
-    # print("Heatmap", heatmap)
+    #print("Heatmap", heatmap)
+    
     # relu on top of the heatmap
     # expression (2) in https://arxiv.org/pdf/1610.02391.pdf
     heatmap = torch.where(heatmap > 0, heatmap, 0)
-
+    #print("Heatmap", heatmap)
+    
     # normalize the heatmap
     heatmap /= torch.max(heatmap)
 

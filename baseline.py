@@ -10,6 +10,7 @@ from torchvision import models
 import time
 from tqdm import tqdm
 from datetime import date
+import torch.nn.init as init
 # from center_loss import CenterLoss
 
 
@@ -73,7 +74,7 @@ def test(PARAMS, model,criterion, center_loss, device, test_loader,optimizer,epo
 
 def main():
     parser = argparse.ArgumentParser(description='manual to this script')
-    parser.add_argument('--model', type=str, default = 'vgg16')
+    parser.add_argument('--model', type=str, default = 'alexnet')
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--evaluate_model', type=str)
     parser.add_argument('--dataset', type=str, default = 'WHU-RS19')
@@ -134,6 +135,10 @@ def main():
     elif PARAMS['model_name'] == 'resnet50':
         model = models.resnet50(weights='ResNet50_Weights.DEFAULT')
         model.fc =  nn.Linear(in_features=2048, out_features=num_classes, bias=True)
+        # Optionally, initialize the weights of the new layer
+        # init.kaiming_normal_(model.fc.weight, mode='fan_out', nonlinearity='relu')
+        # if model.fc.bias is not None:
+        #     init.zeros_(model.fc.bias)
     elif PARAMS['model_name'] == 'alexnet':
         model = models.alexnet(weights='AlexNet_Weights.DEFAULT')
         model.classifier[-1] =  nn.Linear(in_features=4096, out_features=num_classes, bias=True)    

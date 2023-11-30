@@ -118,7 +118,7 @@ def main():
                 'alpha':0.5,
                 }
     tags =   PARAMS['model_name']   +'_'+ "fixed_" +str(PARAMS['fixed']) +'_'+ 'aug_' + str(PARAMS['Augmentation'])
-
+    dataset = 'WHU-RS19'
 
     # Training settings
     if PARAMS['Augmentation']:
@@ -146,9 +146,9 @@ def main():
 
 
     train_dataset = RS_Dataset(
-        root='data/WHU-RS19/train_dataset',transform = train_transform)
+        root='data/'+dataset+'/train_dataset',transform = train_transform)
     test_dataset = RS_Dataset(
-        root='data/WHU-RS19/test_dataset',transform = test_transform)
+        root='data/'+dataset+'/test_dataset',transform = test_transform)
 
     print(PARAMS)
     train_loader = DataLoader(train_dataset,  batch_size=PARAMS['bs'], shuffle=True, num_workers=4, pin_memory = True )
@@ -173,7 +173,7 @@ def main():
         train(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], train_loader, optimizer, epoch, PARAMS['alpha'])
         current_acc = test(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], test_loader,optimizer,epoch,current_acc, PARAMS['alpha'])
         scheduler.step()
-    torch.save(model, 'new_saved_models/{}_{}_{}_proposed_nodiff.pth'.format(date.today(),PARAMS['model_name'],round(current_acc,2)))
+    torch.save(model, 'new_saved_models/{}_{}_{}_proposed_nodiff_{}.pth'.format(date.today(),PARAMS['model_name'],round(current_acc,2),dataset))
 
 
 if __name__ == '__main__':
