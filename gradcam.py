@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import cv2
 from model import SiameseNetwork
 from utils import calculate_mid_size
+import torch.nn.functional as F
 
 '''
     Reference:
@@ -106,6 +107,94 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
 
     return heatmap
 
+
+def Grad_CAM_plusplus(image:torch.Tensor, cluster, class_idx, model:SiameseNetwork=None, sub_network:int=None,\
+image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
+    '''
+        Calculates the heatmap for Gram-CAM procedure
+
+        Parameters
+        ----------
+        image: requested image
+        model: Similarity model (Siamese network)
+        sub_network: requested sub_network 1 or 2
+        image_size: image size
+        figname: figure name (optional)
+        fisize: figure size (optional)
+
+        Returns
+        -------
+        heatmap
+    '''
+    b, c, h, w = image.size()
+
+    logit = model(image, cluster)
+    if class_idx is None:
+        score = logit[:, logit.max(1)[-1]].squeeze()
+    else:
+        score = logit[:, class_idx].squeeze() 
+    
+    # pull the gradients out of the model
+    gradients = model.get_activations_gradient(sub_network=sub_network)
+    #print(gradients)
+
+    # get the activations of the last convolutional layer
+    activations = model.get_activations(image).detach()
+    
+    b, k, u, v = gradients.size()
+
+    alpha_num = gradients.pow(2)
+    alpha_denom = gradients.pow(2).mul(2) + \
+            activations.mul(gradients.pow(3)).view(b, k, u*v).sum(-1, keepdim=True).view(b, k, 1, 1)
+    alpha_denom = torch.where(alpha_denom != 0.0, alpha_denom, torch.ones_like(alpha_denom))
+
+    alpha = alpha_num.div(alpha_denom+1e-7)
+    positive_gradients = F.relu(score.exp()*gradients) # ReLU(dY/dA) == ReLU(exp(S)*dS/dA))
+    weights = (alpha*positive_gradients).view(b, k, u*v).sum(-1) # .view(b, k, 1, 1)
+
+    # weight the channels by corresponding gradients
+    for i in range(activations.shape[1]):
+        activations[:, i, :, :] *= weights[0][i]    
+    #print("Activations", activations)
+        
+    # average the channels of the activations
+    heatmap = torch.mean(activations, dim=1).squeeze()
+    #print("Heatmap", heatmap)
+    
+    # relu on top of the heatmap
+    # expression (2) in https://arxiv.org/pdf/1610.02391.pdf
+    heatmap = torch.where(heatmap > 0, heatmap, 0)
+    #print("Heatmap", heatmap)
+    
+    # normalize the heatmap
+    heatmap /= torch.max(heatmap)
+
+    # Reshape & Convert Tensor to numpy
+    heatmap = heatmap.squeeze()
+    heatmap = heatmap.detach().cpu().numpy()
+
+
+    # Resize Heatmap
+    heatmap = cv2.resize(heatmap, image_size)
+    # Convert to [0,255]
+    heatmap = np.uint8(255 * heatmap)
+
+
+    if figname is not None:
+        plt.figure(figsize=figsize);
+        fig = plt.imshow(heatmap);
+        fig.axes.get_xaxis().set_visible(False)
+        fig.axes.get_yaxis().set_visible(False)
+
+        plt.savefig(figname, dpi=300, format='png', 
+                bbox_inches='tight', pad_inches=0.1,
+                facecolor='auto', edgecolor='auto',
+                backend=None, 
+            )
+
+    return heatmap
+
+
 def combineHeatmap(heatmaps, mode='max'):
     '''
         Combine several heatmaps into one
@@ -132,7 +221,7 @@ def combineHeatmap(heatmaps, mode='max'):
     
     return final_heatmap
 
-def heatmapGLNet(img, cluster, size, partition, model):
+def Grad_CAM_GLNet(img, cluster, size, partition, model):
     heatmap = Grad_CAM_heatmap(img, model, 1, (size[0],size[1]),'F')
     all_heatmaps = [heatmap]
     w = size[0] - int(partition*size[0])
