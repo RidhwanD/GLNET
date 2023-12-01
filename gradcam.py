@@ -130,8 +130,8 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
         heatmap
     '''
     b, c, h, w = image.size()
-
-    logit = model(image, cluster)
+    with torch.no_grad():
+        logit = model(image, cluster)
     if class_idx is None:
         score = logit[:, logit.max(1)[-1]].squeeze()
     else:
@@ -205,6 +205,7 @@ def Score_CAM(image: torch.Tensor, cluster, model: SiameseNetwork, target_class,
     ----------
     image: Input image tensor
     model: The neural network model
+    cluster: Image cluster
     target_class: Target class index
     image_size: Size to resize the heatmap (optional)
     figname: Filename to save the figure (optional)
@@ -228,7 +229,7 @@ def Score_CAM(image: torch.Tensor, cluster, model: SiameseNetwork, target_class,
     
     # Iterate over each activation map
     for i in range(activations.shape[1]):
-        print("Process ",i+1, " of ", activations.shape[1])
+        # print("Process ",i+1, " of ", activations.shape[1])
         # Upsample activation to match the size of the original image
         upsampled_activation = F.interpolate(activations[:, i:i+1, :, :], size=original_size, mode='bilinear', align_corners=False)
 
@@ -236,7 +237,9 @@ def Score_CAM(image: torch.Tensor, cluster, model: SiameseNetwork, target_class,
         masked_input = image * upsampled_activation
 
         # Forward pass with masked input
-        output = model(masked_input, cluster)
+        with torch.no_grad():
+            output = model(masked_input, cluster)
+        torch.cuda.empty_cache()
 
         # Record the score for the target class
         scores[i] = output[0, target_class]
@@ -268,6 +271,7 @@ def Score_CAM(image: torch.Tensor, cluster, model: SiameseNetwork, target_class,
     # Convert to [0,255]
     heatmap = np.uint8(255 * heatmap)
     
+    
     if figname is not None:
         plt.figure(figsize=figsize);
         fig = plt.imshow(heatmap);
@@ -281,6 +285,99 @@ def Score_CAM(image: torch.Tensor, cluster, model: SiameseNetwork, target_class,
             )
     
     return heatmap
+
+def Smooth_Score_CAM(image: torch.Tensor, cluster, model, target_class, device, image_size=None, figname:str=None, figsize=(3,3), num_samples=50, std_dev=0.15):
+    '''
+    Generate a Smooth Score-CAM heatmap
+
+    Parameters
+    ----------
+    image: Input image tensor
+    model: The neural network model
+    target_layer: The target convolutional layer
+    target_class: Target class index
+    num_samples: Number of samples with noise
+    std_dev: Standard deviation for noise
+
+    Returns
+    -------
+    Averaged heatmap
+    '''
+    heatmaps = []
+
+    for _ in range(num_samples):
+        # Add random noise to the image
+        noisy_image = image + torch.randn(image.shape).to(device) * std_dev
+        noisy_cluster = []
+        for img in cluster:
+            noisy_cluster.append(img + torch.randn(img.shape).to(device) * std_dev)
+
+        # Generate heatmap for noisy image
+        heatmap = Score_CAM(noisy_image, noisy_cluster, model, target_class, device, image_size)
+        heatmaps.append(heatmap)
+
+    mean_heatmap = combineHeatmap(np.array(heatmaps), 'mean')
+    
+    if figname is not None:
+        plt.figure(figsize=figsize);
+        fig = plt.imshow(mean_heatmap);
+        fig.axes.get_xaxis().set_visible(False)
+        fig.axes.get_yaxis().set_visible(False)
+
+        plt.savefig(figname, dpi=300, format='png', 
+                bbox_inches='tight', pad_inches=0.1,
+                facecolor='auto', edgecolor='auto',
+                backend=None, 
+            )
+
+    return mean_heatmap
+
+def Smooth_Grad_CAMpp(image: torch.Tensor, cluster, model, target_class, sub_network, device, image_size=None, figname:str=None, figsize=(3,3), num_samples=50, std_dev=0.15):
+    '''
+    Generate a Smooth Score-CAM heatmap
+
+    Parameters
+    ----------
+    image: Input image tensor
+    model: The neural network model
+    target_layer: The target convolutional layer
+    target_class: Target class index
+    num_samples: Number of samples with noise
+    std_dev: Standard deviation for noise
+
+    Returns
+    -------
+    Averaged heatmap
+    '''
+    heatmaps = []
+    
+    for i in range(num_samples):
+        # Add random noise to the image
+        noisy_image = image + torch.randn(image.shape).to(device) * std_dev
+        noisy_cluster = []
+
+        for img in cluster:
+            noisy_cluster.append(img + torch.randn(img.shape).to(device) * std_dev)
+        # Generate heatmap for noisy image
+        heatmap = Grad_CAM_plusplus(noisy_image, noisy_cluster, target_class, model, sub_network, image_size)
+        heatmaps.append(heatmap)
+
+    # Average heatmaps
+    mean_heatmap = combineHeatmap(np.array(heatmaps), 'mean')
+    
+    if figname is not None:
+        plt.figure(figsize=figsize);
+        fig = plt.imshow(mean_heatmap);
+        fig.axes.get_xaxis().set_visible(False)
+        fig.axes.get_yaxis().set_visible(False)
+
+        plt.savefig(figname, dpi=300, format='png', 
+                bbox_inches='tight', pad_inches=0.1,
+                facecolor='auto', edgecolor='auto',
+                backend=None, 
+            )
+
+    return mean_heatmap
 
 def combineHeatmap(heatmaps, mode='max'):
     '''
