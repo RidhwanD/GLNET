@@ -8,7 +8,7 @@ import time
 from RS_Dataset import RS_Dataset
 from tqdm import tqdm
 from datetime import date
-from model import SiameseNetwork
+from model import SiameseNetwork, SiameseNetworkWithSPP
 from center_loss import CenterLoss
 
 #offline
@@ -94,86 +94,90 @@ def boolean_string(s):
     return s == 'True'
 
 def main():
-    parser = argparse.ArgumentParser(description='manual to this script')  
-    parser.add_argument('--model', type=str, default = 'vgg16')
-    parser.add_argument('--partion', type=float, default=0.5)
-    parser.add_argument('--bs', type=int, default=4)
-    parser.add_argument('--fixed',type=boolean_string, default=False)
-    parser.add_argument('--Augmentation',type=boolean_string, default=False)
-    parser.add_argument('--debug',type=boolean_string, default=False)
-    args = parser.parse_args()
-
+    for mod in ['vgg16', 'alexnet', 'resnet50']:
+        parser = argparse.ArgumentParser(description='manual to this script')  
+        parser.add_argument('--model', type=str, default = mod)
+        parser.add_argument('--partion', type=float, default=0.5)
+        parser.add_argument('--bs', type=int, default=4)
+        parser.add_argument('--fixed',type=boolean_string, default=False)
+        parser.add_argument('--Augmentation',type=boolean_string, default=False)
+        parser.add_argument('--debug',type=boolean_string, default=False)
+        args = parser.parse_args()
     
-    PARAMS = {'DEVICE': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-                'bs': args.bs,
-                'epochs':5,
-                'lr': 0.0006,
-                'momentum': 0.5,
-                'log_interval':10,
-                'criterion':F.cross_entropy,
-                'partion':args.partion,
-                'model_name': str(args.model) ,
-                'fixed':args.fixed,
-                'Augmentation': args.Augmentation,
-                'alpha':0.5,
-                }
-    tags =   PARAMS['model_name']   +'_'+ "fixed_" +str(PARAMS['fixed']) +'_'+ 'aug_' + str(PARAMS['Augmentation'])
-    dataset = 'WHU-RS19'
-
-    # Training settings
-    if PARAMS['Augmentation']:
-        train_transform = transforms.Compose(
-                        [ 
-                            transforms.ToPILImage(),
-                            transforms.RandomHorizontalFlip(),
-                            transforms.ColorJitter(0.4, 0.4, 0.4),
-                            transforms.Resize((256,256)),
-                            transforms.ToTensor(),
-                            transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
-    else:
-        train_transform = transforms.Compose(
+        
+        PARAMS = {'DEVICE': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+                    'bs': args.bs,
+                    'epochs':20,
+                    'lr': 0.0006,
+                    'momentum': 0.5,
+                    'log_interval':10,
+                    'criterion':F.cross_entropy,
+                    'partion':args.partion,
+                    'model_name': str(args.model) ,
+                    'fixed':args.fixed,
+                    'Augmentation': args.Augmentation,
+                    'alpha':0.5,
+                    'spp': True
+                    }
+        tags =   PARAMS['model_name']   +'_'+ "fixed_" +str(PARAMS['fixed']) +'_'+ 'aug_' + str(PARAMS['Augmentation'])
+        dataset = 'rsscn7'
+    
+        # Training settings
+        if PARAMS['Augmentation']:
+            train_transform = transforms.Compose(
+                            [ 
+                                transforms.ToPILImage(),
+                                transforms.RandomHorizontalFlip(),
+                                transforms.ColorJitter(0.4, 0.4, 0.4),
+                                transforms.Resize((256,256)),
+                                transforms.ToTensor(),
+                                transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
+        else:
+            train_transform = transforms.Compose(
+                    [ 
+                        transforms.ToPILImage(),
+                        transforms.Resize((256,256)),
+                        transforms.ToTensor(),
+                        transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
+        test_transform = transforms.Compose(
                 [ 
                     transforms.ToPILImage(),
                     transforms.Resize((256,256)),
                     transforms.ToTensor(),
                     transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
-    test_transform = transforms.Compose(
-            [ 
-                transforms.ToPILImage(),
-                transforms.Resize((256,256)),
-                transforms.ToTensor(),
-                transforms.Normalize([0.4850, 0.4560, 0.4060], [0.2290, 0.2240, 0.2250])])
-
-
-    train_dataset = RS_Dataset(
-        root='data/'+dataset+'/train_dataset',transform = train_transform)
-    test_dataset = RS_Dataset(
-        root='data/'+dataset+'/test_dataset',transform = test_transform)
-
-    print(PARAMS)
-    train_loader = DataLoader(train_dataset,  batch_size=PARAMS['bs'], shuffle=True, num_workers=4, pin_memory = True )
-    test_loader =  DataLoader(test_dataset, batch_size=PARAMS['bs'], shuffle=True,  num_workers=4, pin_memory = True  )
-
-    num_classes = len(train_dataset.classes)
-    # model = SiameseNetwork(base_model = PARAMS['model_name'], num_classes = num_classes).to(PARAMS['DEVICE'])
-    model = SiameseNetwork(base_model = PARAMS['model_name'], num_classes = num_classes, fixed = PARAMS['fixed']).to(PARAMS['DEVICE'] )
-
-    model = model.to(PARAMS['DEVICE'])
-
-    center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*256*256, use_gpu=True)
-    params = list(model.parameters()) + list(center_loss.parameters())
-    optimizer = torch.optim.SGD(params, lr=PARAMS['lr'], momentum=PARAMS['momentum'])
-
-    # optimizer = optim.SGD(model.parameters(), lr=PARAMS['lr'], momentum=PARAMS['momentum'])
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = 7, gamma = 0.9)
-    criterion =  F.cross_entropy
-    current_acc = 0
-
-    for epoch in range(1, PARAMS['epochs'] + 1):
-        train(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], train_loader, optimizer, epoch, PARAMS['alpha'])
-        current_acc = test(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], test_loader,optimizer,epoch,current_acc, PARAMS['alpha'])
-        scheduler.step()
-    torch.save(model, 'new_saved_models/{}_{}_{}_proposed_nodiff_{}.pth'.format(date.today(),PARAMS['model_name'],round(current_acc,2),dataset))
+    
+    
+        train_dataset = RS_Dataset(
+            root='data/'+dataset+'/train_dataset',transform = train_transform)
+        test_dataset = RS_Dataset(
+            root='data/'+dataset+'/test_dataset',transform = test_transform)
+    
+        print(PARAMS)
+        train_loader = DataLoader(train_dataset,  batch_size=PARAMS['bs'], shuffle=True, num_workers=4, pin_memory = True )
+        test_loader =  DataLoader(test_dataset, batch_size=PARAMS['bs'], shuffle=True,  num_workers=4, pin_memory = True  )
+    
+        num_classes = len(train_dataset.classes)
+        if (PARAMS['spp']):
+            model = SiameseNetworkWithSPP(base_model = PARAMS['model_name'], num_classes = num_classes, fixed = PARAMS['fixed']).to(PARAMS['DEVICE'] )
+        else:
+            model = SiameseNetwork(base_model = PARAMS['model_name'], num_classes = num_classes).to(PARAMS['DEVICE'])
+             
+        model = model.to(PARAMS['DEVICE'])
+    
+        center_loss = CenterLoss(num_classes=num_classes, feat_dim=3*256*256, use_gpu=True)
+        params = list(model.parameters()) + list(center_loss.parameters())
+        optimizer = torch.optim.SGD(params, lr=PARAMS['lr'], momentum=PARAMS['momentum'])
+    
+        # optimizer = optim.SGD(model.parameters(), lr=PARAMS['lr'], momentum=PARAMS['momentum'])
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = 7, gamma = 0.9)
+        criterion =  F.cross_entropy
+        current_acc = 0
+    
+        for epoch in range(1, PARAMS['epochs'] + 1):
+            train(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], train_loader, optimizer, epoch, PARAMS['alpha'])
+            current_acc = test(PARAMS, model,criterion, center_loss, PARAMS['DEVICE'], test_loader,optimizer,epoch,current_acc, PARAMS['alpha'])
+            scheduler.step()
+        torch.save(model, 'new_saved_models/{}_{}_{}_proposed_nodiff_{}_SPP.pth'.format(date.today(),PARAMS['model_name'],round(current_acc,2),dataset))
 
 
 if __name__ == '__main__':
