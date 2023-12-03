@@ -4,11 +4,7 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 import cv2
 from model import SiameseNetwork
-from utils import calculate_mid_size, generateCluster
 import torch.nn.functional as F
-from lime import lime_image
-from skimage.segmentation import mark_boundaries
-import matplotlib.pyplot as plt
 
 '''
     Reference:
@@ -38,7 +34,7 @@ def convert_to_tensor(image:np.ndarray=None, tfms:transforms=None, device:str='c
 
 
     
-def Grad_CAM_heatmap(image:torch.Tensor, model:SiameseNetwork=None, sub_network:int=None,\
+def Grad_CAM(image:torch.Tensor, model:SiameseNetwork=None,\
 image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     '''
         Calculates the heatmap for Gram-CAM procedure
@@ -58,7 +54,7 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     '''
     
     # pull the gradients out of the model
-    gradients = model.get_activations_gradient(sub_network=sub_network)
+    gradients = model.get_activations_gradient(sub_network=1)
     #print(gradients)
 
     # pool the gradients across the channels
@@ -66,7 +62,7 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     #print("Pooled Grads", pooled_gradients)
 
     # get the activations of the last convolutional layer
-    activations = model.get_activations(image).detach()
+    activations = model.get_activations_lower(image).detach()
 
     # weight the channels by corresponding gradients
     for i in range(activations.shape[1]):
@@ -89,6 +85,7 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     heatmap = heatmap.squeeze()
     heatmap = heatmap.detach().cpu().numpy()
 
+    print(heatmap.shape)
 
     # Resize Heatmap
     heatmap = cv2.resize(heatmap, image_size)
@@ -111,7 +108,7 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     return heatmap
 
 
-def Grad_CAM_plusplus(image:torch.Tensor, cluster, class_idx, model:SiameseNetwork=None, sub_network:int=None,\
+def Grad_CAMpp(image:torch.Tensor, cluster, model:SiameseNetwork=None,\
 image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     '''
         Adapted from https://github.com/1Konny/gradcam_plus_plus-pytorch
@@ -135,17 +132,14 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     b, c, h, w = image.size()
     with torch.no_grad():
         logit = model(image, cluster)
-    if class_idx is None:
-        score = logit[:, logit.max(1)[-1]].squeeze()
-    else:
-        score = logit[:, class_idx].squeeze() 
+    score = logit[:, logit.max(1)[-1]].squeeze()
     
     # pull the gradients out of the model
-    gradients = model.get_activations_gradient(sub_network=sub_network)
+    gradients = model.get_activations_gradient(sub_network=1)
     #print(gradients)
 
     # get the activations of the last convolutional layer
-    activations = model.get_activations(image).detach()
+    activations = model.get_activations_lower(image).detach()
     
     b, k, u, v = gradients.size()
 
@@ -177,7 +171,6 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
 
     # Reshape & Convert Tensor to numpy
     heatmap = heatmap.squeeze()
-    print(heatmap.shape)
     heatmap = heatmap.detach().cpu().numpy()
 
 
@@ -220,7 +213,7 @@ def Score_CAM(image: torch.Tensor, cluster, model: SiameseNetwork, target_class,
     heatmap
     '''
     # get the activations of the last convolutional layer
-    activations = model.get_activations(image).detach()
+    activations = model.get_activations_lower(image).detach()
 
     # Initialize scores
     scores = torch.zeros(activations.shape[1], dtype=torch.float32)
@@ -336,7 +329,7 @@ def Smooth_Score_CAM(image: torch.Tensor, cluster, model, target_class, device, 
 
     return mean_heatmap
 
-def Smooth_Grad_CAMpp(image: torch.Tensor, cluster, model, target_class, sub_network, device, image_size=None, figname:str=None, figsize=(3,3), num_samples=50, std_dev=0.15):
+def Smooth_Grad_CAMpp(image: torch.Tensor, cluster, model, device, image_size=None, figname:str=None, figsize=(3,3), num_samples=50, std_dev=0.15):
     '''
     Generate a Smooth Score-CAM heatmap
 
@@ -363,7 +356,7 @@ def Smooth_Grad_CAMpp(image: torch.Tensor, cluster, model, target_class, sub_net
         for img in cluster:
             noisy_cluster.append(img + torch.randn(img.shape).to(device) * std_dev)
         # Generate heatmap for noisy image
-        heatmap = Grad_CAM_plusplus(noisy_image, noisy_cluster, target_class, model, sub_network, image_size)
+        heatmap = Grad_CAMpp(noisy_image, noisy_cluster, model, image_size)
         heatmaps.append(heatmap)
 
     # Average heatmaps
@@ -409,24 +402,7 @@ def combineHeatmap(heatmaps, mode='max'):
     
     return final_heatmap
 
-def Grad_CAM_GLNet(img, cluster, size, partition, model):
-    heatmap = Grad_CAM_heatmap(img, model, 1, (size[0],size[1]),'F')
-    all_heatmaps = [heatmap]
-    w = size[0] - int(partition*size[0])
-    h = size[1] - int(partition*size[1])
-    m_w, m_h = calculate_mid_size(size, partition)
-    m_w, m_h = int((size[0] - m_w) / 2), int((size[1] - m_h) / 2)
-    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[0], model, 1, (int(0.6*size[0]),int(0.6*size[1])),'F'), ((0, h), (0, h)), 'constant', constant_values=0))
-    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[1], model, 1, (int(0.6*size[0]),int(0.6*size[1])),'F'), ((0, h), (w, 0)), 'constant', constant_values=0))
-    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[2], model, 1, (int(0.6*size[0]),int(0.6*size[1])),'F'), ((w, 0), (w, 0)), 'constant', constant_values=0))
-    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[3], model, 1, (int(0.6*size[0]),int(0.6*size[1])),'F'), ((w, 0), (0, h)), 'constant', constant_values=0))
-    all_heatmaps.append(np.pad(Grad_CAM_heatmap(cluster[4], model, 1, (calculate_mid_size(size, 0.6)),'F'), ((m_w, m_h), (m_w, m_h)), 'constant', constant_values=0))
-    all_heatmaps = np.array(all_heatmaps)
-    final_heatmap = combineHeatmap(all_heatmaps,'max')
-    
-    return final_heatmap
-
-def Median_Grad_CAM(image:torch.Tensor, cluster, class_idx, model:SiameseNetwork=None, sub_network:int=None,\
+def Median_Grad_CAM(image:torch.Tensor, cluster, model:SiameseNetwork=None,\
 image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     '''
         Adapted from https://github.com/1Konny/gradcam_plus_plus-pytorch
@@ -450,17 +426,14 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
     b, c, h, w = image.size()
     with torch.no_grad():
         logit = model(image, cluster)
-    if class_idx is None:
         score = logit[:, logit.max(1)[-1]].squeeze()
-    else:
-        score = logit[:, class_idx].squeeze() 
     
     # pull the gradients out of the model
-    gradients = model.get_activations_gradient(sub_network=sub_network)
+    gradients = model.get_activations_gradient(sub_network=1)
     #print(gradients)
 
     # get the activations of the last convolutional layer
-    activations = model.get_activations(image).detach()
+    activations = model.get_activations_lower(image).detach()
     
     b, k, u, v = gradients.size()
 
@@ -509,8 +482,6 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
             )
 
     return heatmap
-
-
 
 
 
