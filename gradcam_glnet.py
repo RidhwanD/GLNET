@@ -84,20 +84,20 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
             size = (int(0.6*image_size[0]),int(0.6*image_size[1]))
         else:
             size = (calculate_mid_size(image_size, 0.6))
-        heatmap = cv2.resize(heatmap, size)
+        heatmap = cv2.resize(heatmap, (size[1], size[0]))
         heatmaps.append(heatmap)
     
-    w = image_size[0] - int(partition*image_size[0])
-    h = image_size[1] - int(partition*image_size[1])
-    m_w, m_h = calculate_mid_size(image_size, partition)
-    m_w, m_h = int((image_size[0] - m_w) / 2), int((image_size[1] - m_h) / 2)
+    h = image_size[0] - int(partition*image_size[0])
+    w = image_size[1] - int(partition*image_size[1])
+    m_h, m_w = calculate_mid_size(image_size, partition)
+    m_h, m_w = int((image_size[0] - m_h) / 2), int((image_size[1] - m_w) / 2)
     k = 5
     alphaX = 0
-    heatmaps[1] = cv2.GaussianBlur(np.pad(heatmaps[1], ((0, h), (0, h)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[1] = cv2.GaussianBlur(np.pad(heatmaps[1], ((0, h), (0, w)), 'constant', constant_values=0), (k, k), alphaX)
     heatmaps[2] = cv2.GaussianBlur(np.pad(heatmaps[2], ((0, h), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
-    heatmaps[3] = cv2.GaussianBlur(np.pad(heatmaps[3], ((w, 0), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
-    heatmaps[4] = cv2.GaussianBlur(np.pad(heatmaps[4], ((w, 0), (0, h)), 'constant', constant_values=0), (k, k), alphaX)
-    heatmaps[5] = cv2.GaussianBlur(np.pad(heatmaps[5], ((m_w, m_h), (m_w, m_h)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[3] = cv2.GaussianBlur(np.pad(heatmaps[3], ((h, 0), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[4] = cv2.GaussianBlur(np.pad(heatmaps[4], ((h, 0), (0, w)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[5] = cv2.GaussianBlur(np.pad(heatmaps[5], ((m_h, m_h), (m_w, m_w)), 'constant', constant_values=0), (k, k), alphaX)
     
     heatmaps = [torch.from_numpy(heatmap) for heatmap in heatmaps]
     
@@ -157,6 +157,8 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
         heatmap
     '''
     b, c, h, w = image.size()
+    # print(b, c, h, w, [clus.shape for clus in cluster])
+    # print(image_size)
     with torch.no_grad():
         logit = model(image, cluster)
     score = logit[:, logit.max(1)[-1]].squeeze()
@@ -199,20 +201,20 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
             size = (int(0.6*image_size[0]),int(0.6*image_size[1]))
         else:
             size = (calculate_mid_size(image_size, 0.6))
-        heatmap = cv2.resize(heatmap, size)
+        heatmap = cv2.resize(heatmap, (size[1], size[0]))
         heatmaps.append(heatmap)
     
-    w = image_size[0] - int(partition*image_size[0])
-    h = image_size[1] - int(partition*image_size[1])
-    m_w, m_h = calculate_mid_size(image_size, partition)
-    m_w, m_h = int((image_size[0] - m_w) / 2), int((image_size[1] - m_h) / 2)
+    h = image_size[0] - int(partition*image_size[0])
+    w = image_size[1] - int(partition*image_size[1])
+    m_h, m_w = calculate_mid_size(image_size, partition)
+    m_h, m_w = int((image_size[0] - m_h) / 2), int((image_size[1] - m_w) / 2)
     k = 5
     alphaX = 0
-    heatmaps[1] = cv2.GaussianBlur(np.pad(heatmaps[1], ((0, h), (0, h)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[1] = cv2.GaussianBlur(np.pad(heatmaps[1], ((0, h), (0, w)), 'constant', constant_values=0), (k, k), alphaX)
     heatmaps[2] = cv2.GaussianBlur(np.pad(heatmaps[2], ((0, h), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
-    heatmaps[3] = cv2.GaussianBlur(np.pad(heatmaps[3], ((w, 0), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
-    heatmaps[4] = cv2.GaussianBlur(np.pad(heatmaps[4], ((w, 0), (0, h)), 'constant', constant_values=0), (k, k), alphaX)
-    heatmaps[5] = cv2.GaussianBlur(np.pad(heatmaps[5], ((m_w, m_h), (m_w, m_h)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[3] = cv2.GaussianBlur(np.pad(heatmaps[3], ((h, 0), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[4] = cv2.GaussianBlur(np.pad(heatmaps[4], ((h, 0), (0, w)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[5] = cv2.GaussianBlur(np.pad(heatmaps[5], ((m_h, m_h), (m_w, m_w)), 'constant', constant_values=0), (k, k), alphaX)
     
     heatmaps = [torch.from_numpy(heatmap) for heatmap in heatmaps]
     
@@ -232,7 +234,7 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
 
 
     # Resize Heatmap
-    heatmap = cv2.resize(heatmap, image_size)
+    heatmap = cv2.resize(heatmap, (image_size[1], image_size[0]))
     # Convert to [0,255]
     heatmap = np.uint8(255 * heatmap)
 
@@ -337,20 +339,20 @@ def Score_CAM_GLNet(image: torch.Tensor, cluster, model: SiameseNetwork, target_
             size = (int(0.6*image_size[0]),int(0.6*image_size[1]))
         else:
             size = (calculate_mid_size(image_size, 0.6))
-        heatmap = cv2.resize(heatmap, size)
+        heatmap = cv2.resize(heatmap, (size[1], size[0]))
         new_heatmaps.append(heatmap)
     
-    w = image_size[0] - int(partition*image_size[0])
-    h = image_size[1] - int(partition*image_size[1])
-    m_w, m_h = calculate_mid_size(image_size, partition)
-    m_w, m_h = int((image_size[0] - m_w) / 2), int((image_size[1] - m_h) / 2)
+    h = image_size[0] - int(partition*image_size[0])
+    w = image_size[1] - int(partition*image_size[1])
+    m_h, m_w = calculate_mid_size(image_size, partition)
+    m_h, m_w = int((image_size[0] - m_h) / 2), int((image_size[1] - m_w) / 2)
     k = 5
     alphaX = 0
-    new_heatmaps[1] = cv2.GaussianBlur(np.pad(new_heatmaps[1], ((0, h), (0, h)), 'constant', constant_values=0), (k, k), alphaX)
+    new_heatmaps[1] = cv2.GaussianBlur(np.pad(new_heatmaps[1], ((0, h), (0, w)), 'constant', constant_values=0), (k, k), alphaX)
     new_heatmaps[2] = cv2.GaussianBlur(np.pad(new_heatmaps[2], ((0, h), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
-    new_heatmaps[3] = cv2.GaussianBlur(np.pad(new_heatmaps[3], ((w, 0), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
-    new_heatmaps[4] = cv2.GaussianBlur(np.pad(new_heatmaps[4], ((w, 0), (0, h)), 'constant', constant_values=0), (k, k), alphaX)
-    new_heatmaps[5] = cv2.GaussianBlur(np.pad(new_heatmaps[5], ((m_w, m_h), (m_w, m_h)), 'constant', constant_values=0), (k, k), alphaX)
+    new_heatmaps[3] = cv2.GaussianBlur(np.pad(new_heatmaps[3], ((h, 0), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
+    new_heatmaps[4] = cv2.GaussianBlur(np.pad(new_heatmaps[4], ((h, 0), (0, w)), 'constant', constant_values=0), (k, k), alphaX)
+    new_heatmaps[5] = cv2.GaussianBlur(np.pad(new_heatmaps[5], ((m_h, m_h), (m_w, m_w)), 'constant', constant_values=0), (k, k), alphaX)
     
     heatmaps = [torch.from_numpy(heatmap) for heatmap in new_heatmaps]
     
@@ -402,7 +404,6 @@ def Smooth_Score_CAM_GLNet(image: torch.Tensor, cluster, model, target_class, pa
 
     for i in range(num_samples):
         # Add random noise to the image
-        print(i)
         noisy_image = image + torch.randn(image.shape).to(device) * std_dev
         noisy_cluster = []
         for img in cluster:
@@ -597,20 +598,20 @@ image_size:tuple=None, figname:str=None, figsize:tuple=(3,3)):
             size = (int(0.6*image_size[0]),int(0.6*image_size[1]))
         else:
             size = (calculate_mid_size(image_size, 0.6))
-        heatmap = cv2.resize(heatmap, size)
+        heatmap = cv2.resize(heatmap, (size[1], size[0]))
         heatmaps.append(heatmap)
     
-    w = image_size[0] - int(partition*image_size[0])
-    h = image_size[1] - int(partition*image_size[1])
-    m_w, m_h = calculate_mid_size(image_size, partition)
-    m_w, m_h = int((image_size[0] - m_w) / 2), int((image_size[1] - m_h) / 2)
+    h = image_size[0] - int(partition*image_size[0])
+    w = image_size[1] - int(partition*image_size[1])
+    m_h, m_w = calculate_mid_size(image_size, partition)
+    m_h, m_w = int((image_size[0] - m_h) / 2), int((image_size[1] - m_w) / 2)
     k = 5
     alphaX = 0
-    heatmaps[1] = cv2.GaussianBlur(np.pad(heatmaps[1], ((0, h), (0, h)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[1] = cv2.GaussianBlur(np.pad(heatmaps[1], ((0, h), (0, w)), 'constant', constant_values=0), (k, k), alphaX)
     heatmaps[2] = cv2.GaussianBlur(np.pad(heatmaps[2], ((0, h), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
-    heatmaps[3] = cv2.GaussianBlur(np.pad(heatmaps[3], ((w, 0), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
-    heatmaps[4] = cv2.GaussianBlur(np.pad(heatmaps[4], ((w, 0), (0, h)), 'constant', constant_values=0), (k, k), alphaX)
-    heatmaps[5] = cv2.GaussianBlur(np.pad(heatmaps[5], ((m_w, m_h), (m_w, m_h)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[3] = cv2.GaussianBlur(np.pad(heatmaps[3], ((h, 0), (w, 0)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[4] = cv2.GaussianBlur(np.pad(heatmaps[4], ((h, 0), (0, w)), 'constant', constant_values=0), (k, k), alphaX)
+    heatmaps[5] = cv2.GaussianBlur(np.pad(heatmaps[5], ((m_h, m_h), (m_w, m_w)), 'constant', constant_values=0), (k, k), alphaX)
     
     heatmaps = [torch.from_numpy(heatmap) for heatmap in heatmaps]
     
