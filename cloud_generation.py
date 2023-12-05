@@ -27,33 +27,36 @@ def generate_cloud(im_size_h, im_size_w,k = 2,):
 
 def add_cloud(file_name, file_name_save, k):
     img = cv2.imread(file_name)
-    im_size_h, im_size_w = np.shape(img)[:2]
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    im_size_h, im_size_w = np.shape(img_rgb)[:2]
         
     # Generate cloud map
     cloud_map = generate_cloud(im_size_h, im_size_w,k)
     fourground_map = (255 - cloud_map) / 255
-    res = np.zeros((np.shape(img)))
-    res[:,:,0] = (img[:,:,0] * fourground_map + cloud_map) / 256
-    res[:,:,1] = (img[:,:,1] * fourground_map + cloud_map) / 256
-    res[:,:,2] = (img[:,:,2] * fourground_map + cloud_map) / 256
+    res = np.zeros((np.shape(img_rgb)))
+    res[:,:,0] = (img_rgb[:,:,0] * fourground_map + cloud_map) / 255
+    res[:,:,1] = (img_rgb[:,:,1] * fourground_map + cloud_map) / 255
+    res[:,:,2] = (img_rgb[:,:,2] * fourground_map + cloud_map) / 255
     
     window_name = 'image'
-    cv2.imshow(window_name, img)
+    cv2.imshow(window_name, img_rgb)
+    
     
     plt.imsave(file_name_save.replace('.jpg', '_cloud.png'), res)
     
     return cloud_map, res.astype(np.uint8),fourground_map
 
 def main():
-    mode = "all" # 'all': all cloudy, 'mixed': mixed of cloudy and clear with c_perc% cloudy
+    mode = "mixed" # 'all': all cloudy, 'mixed': mixed of cloudy and clear with c_perc% cloudy
     c_perc = 50  # percentage of cloudy image for mixed mode only
-    dataset = "WHU-RS19"
+    dataset = "rsscn7"
+    
     print("Generating",mode,"cloudy",dataset)
 
     dataPath_test = os.path.join("data", dataset, "test_dataset-clear")
-    dataPath_test_cloudy = os.path.join("data", dataset, "test_dataset-all")
+    dataPath_test_cloudy = os.path.join("data", dataset, "test_dataset")
     dataPath_train = os.path.join("data", dataset, "train_dataset-clear")
-    dataPath_train_cloudy = os.path.join("data", dataset, "train_dataset-all")
+    dataPath_train_cloudy = os.path.join("data", dataset, "train_dataset")
     
     label = os.listdir(dataPath_test)
 

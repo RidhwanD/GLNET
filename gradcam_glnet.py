@@ -282,7 +282,7 @@ def Score_CAM_GLNet(image: torch.Tensor, cluster, model: SiameseNetwork, target_
     # Get the size of the original image
     original_size = image.shape[-2:]
     
-    N = 10  # Number of top activation maps to consider
+    N = 1  # Number of top activation maps to consider
     for activation in activations:
         activation = activation[:, activation.mean(dim=(2, 3)).topk(N, dim=1).indices.squeeze(), :, :]
     
@@ -303,7 +303,7 @@ def Score_CAM_GLNet(image: torch.Tensor, cluster, model: SiameseNetwork, target_
         # Forward pass with masked input
         with torch.no_grad():
             output = model(masked_input, masked_cluster)
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
 
         # Record the score for the target class
         scores[i] = output[0, target_class]
@@ -383,7 +383,7 @@ def Score_CAM_GLNet(image: torch.Tensor, cluster, model: SiameseNetwork, target_
     
     return heatmap
 
-def Smooth_Score_CAM_GLNet(image: torch.Tensor, cluster, model, target_class, partition, device, image_size=None, figname:str=None, figsize=(3,3), num_samples=20, std_dev=0.15):
+def Smooth_Score_CAM_GLNet(image: torch.Tensor, cluster, model, target_class, partition, device, image_size=None, figname:str=None, figsize=(3,3), num_samples=5, std_dev=0.15):
     '''
     Generate a Smooth Score-CAM heatmap
 
@@ -429,7 +429,7 @@ def Smooth_Score_CAM_GLNet(image: torch.Tensor, cluster, model, target_class, pa
 
     return mean_heatmap
 
-def Smooth_Grad_CAMpp_GLNet(image: torch.Tensor, cluster, model, partition, device, image_size=None, figname:str=None, figsize=(3,3), num_samples=20, std_dev=0.15):
+def Smooth_Grad_CAMpp_GLNet(image: torch.Tensor, cluster, model, partition, device, image_size=None, figname:str=None, figsize=(3,3), num_samples=10, std_dev=0.15):
     '''
     Generate a Smooth Score-CAM heatmap
 

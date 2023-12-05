@@ -23,7 +23,8 @@ def imshow(image:torch.Tensor=None, heatmap:np.ndarray=None, scale:float=0.4, me
     npimg = image.squeeze(0).cpu().numpy()
 
     # Image normalization
-    npimg = npimg * np.array(std)[:,None,None] + np.array(mean)[:,None,None]  # Unnormalize
+    # print("Image normalization")
+    # npimg = npimg * np.array(std)[:,None,None] + np.array(mean)[:,None,None]  # Unnormalize
 
     # Reshape
     npimg = np.transpose(npimg, (1, 2, 0))
@@ -36,10 +37,10 @@ def imshow(image:torch.Tensor=None, heatmap:np.ndarray=None, scale:float=0.4, me
     # Show image
     plt.figure(figsize=figsize)
     fig = plt.imshow(npimg)
+    fig.axes.get_xaxis().set_visible(False)
+    fig.axes.get_yaxis().set_visible(False)
+    
     if figname is not None:
-        fig.axes.get_xaxis().set_visible(False)
-        fig.axes.get_yaxis().set_visible(False)
-
         plt.savefig(figname, dpi=300, 
                 bbox_inches='tight', pad_inches=0.1,
                 facecolor='auto', edgecolor='auto',
@@ -52,6 +53,14 @@ def boolean_string(s):
     return s == 'True'
 
 def generateCluster(img, transform, partion=0.6, size=256):
+    '''
+        Parameters
+        ----------
+        img: image as numpy.ndarray
+        transform: transformation function
+        partition: partition size of the input image,
+        size: size of the resulting image and clusters
+    '''
     width, length = int(size*partion),int(size*partion)
     upper_left   =   cv2.resize(img[:width,:length],(size,size))
     upper_right  =   cv2.resize(img[:width,-length:],(size,size))
@@ -62,6 +71,25 @@ def generateCluster(img, transform, partion=0.6, size=256):
     img = transform(img)
     cluster_data = [transform(i) for i in cluster_data]
     # label = self.imgs[index][1]
+    
+    return img, cluster_data
+
+def generateClusterNT(img, partion=0.6, size=256):
+    '''
+        Parameters
+        ----------
+        img: image as numpy.ndarray
+        transform: transformation function
+        partition: partition size of the input image,
+        size: size of the resulting image and clusters
+    '''
+    width, length = int(size*partion),int(size*partion)
+    upper_left   =   cv2.resize(img[:width,:length],(size,size))
+    upper_right  =   cv2.resize(img[:width,-length:],(size,size))
+    bottom_right =   cv2.resize(img[-width:,-length:],(size,size))
+    bottom_left  =   cv2.resize(img[-width:,:length],(size,size))
+    mid = img[int((1-partion)/2*(img.shape[0])):-int((1-partion)/2*(img.shape[0])),int((1-partion)/2*(img.shape[1])):-int((1-partion)/2*(img.shape[1]))]
+    cluster_data = upper_left,upper_right,bottom_right,bottom_left,mid
     
     return img, cluster_data
 

@@ -31,7 +31,7 @@ class SiameseNetwork(nn.Module):
         if base_model == 'vgg16':
             model = models.vgg16(weights='VGG16_Weights.DEFAULT')
             model.classifier[-1] =  nn.Linear(in_features=4096, out_features=self.num_classes, bias=True)
-            weights = torch.load('saved_models/WHU-RS19_2023-12-02_vgg16_95.4_baseline.pth')           # Use saved parameters
+            weights = torch.load('saved_models/ucm_2023-12-05_vgg16_94.6_baseline.pth')           # Use saved parameters
             model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
@@ -45,7 +45,7 @@ class SiameseNetwork(nn.Module):
         if base_model == 'alexnet':
             model = models.alexnet(weights='AlexNet_Weights.DEFAULT')
             model.classifier[-1] =  nn.Linear(in_features=4096, out_features=self.num_classes, bias=True)
-            weights = torch.load('saved_models/WHU-RS19_2023-12-02_alexnet_84.6_baseline.pth')           # Use saved parameters
+            weights = torch.load('saved_models/ucm_2023-12-05_alexnet_89.84_baseline.pth')           # Use saved parameters
             model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
@@ -59,7 +59,7 @@ class SiameseNetwork(nn.Module):
         if base_model == 'resnet50':
             model = models.resnet50(weights='ResNet50_Weights.DEFAULT')
             model.fc =  nn.Linear(in_features=2048, out_features=self.num_classes, bias=True)
-            weights = torch.load('saved_models/WHU-RS19_2023-12-02_resnet50_82.4_baseline.pth')          # Use saved parameters
+            weights = torch.load('saved_models/ucm_2023-12-05_resnet50_81.75_baseline.pth')          # Use saved parameters
             model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
@@ -229,7 +229,7 @@ class SiameseNetworkWithSPP(nn.Module):
         if base_model == 'vgg16':
             model = models.vgg16(weights='VGG16_Weights.DEFAULT')
             model.classifier[-1] =  nn.Linear(in_features=4096, out_features=self.num_classes, bias=True)
-            weights = torch.load('saved_models/WHU-RS19_2023-12-02_vgg16_95.4_baseline.pth')           # Use saved parameters
+            weights = torch.load('saved_models/ucm_2023-12-05_vgg16_94.6_baseline.pth')           # Use saved parameters
             model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
@@ -242,7 +242,7 @@ class SiameseNetworkWithSPP(nn.Module):
         if base_model == 'alexnet':
             model = models.alexnet(weights='AlexNet_Weights.DEFAULT')
             model.classifier[-1] =  nn.Linear(in_features=4096, out_features=self.num_classes, bias=True)
-            weights = torch.load('saved_models/WHU-RS19_2023-12-02_alexnet_84.6_baseline.pth')           # Use saved parameters
+            weights = torch.load('saved_models/ucm_2023-12-05_alexnet_89.84_baseline.pth')           # Use saved parameters
             model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
@@ -256,7 +256,7 @@ class SiameseNetworkWithSPP(nn.Module):
         if base_model == 'resnet50':
             model = models.resnet50(weights='ResNet50_Weights.DEFAULT')
             model.fc =  nn.Linear(in_features=2048, out_features=self.num_classes, bias=True)
-            weights = torch.load('saved_models/WHU-RS19_2023-12-02_resnet50_82.4_baseline.pth')          # Use saved parameters
+            weights = torch.load('saved_models/ucm_2023-12-05_resnet50_81.75_baseline.pth')          # Use saved parameters
             model.load_state_dict(weights)
             for param in model.parameters():
                 if self.fixed:
